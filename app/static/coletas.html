@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Coleta em Fornecedores — LogHub</title>
+<link rel="stylesheet" href="/static/volix.css" />
+<style>
+  main { max-width: 1760px; }
+  header p { max-width: 840px; }
+
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 20px; }
+  .panel h2 { margin: 0 0 14px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .form-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+
+  .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px 14px; }
+  @media (max-width: 1000px) { .form-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }
+  .field label { display: block; font-size: 11.5px; color: var(--muted); margin-bottom: 5px; }
+  .field input, .field select {
+    width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    border-radius: 6px; padding: 9px 10px; font-size: 13px; }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--volix); }
+  .field input:disabled { opacity: .7; cursor: not-allowed; }
+  .form-foot { display: flex; align-items: center; gap: 16px; margin-top: 16px; flex-wrap: wrap; }
+  button { background: var(--volix); color: #0a0d12; border: none; padding: 10px 18px; border-radius: 6px;
+    cursor: pointer; font-size: 13px; font-weight: 700; }
+  button:hover { filter: brightness(1.06); }
+  button:disabled { opacity: .6; cursor: not-allowed; }
+  button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); font-weight: 400; }
+  .live { font-size: 12.5px; color: var(--muted); display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+  .live b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .live-val.ok { color: var(--ok); } .live-val.warn { color: var(--warn); } .live-val.bad { color: var(--bad); }
+
+  /* Lista de NFs no lançamento */
+  #nfList { margin-top: 14px; display: none; }
+
+  /* KPIs */
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+  .kpi { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+  .kpi.hero { border-top: 3px solid var(--accent); }
+  .kpi .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+  .kpi .val { font-size: 30px; font-weight: 800; margin-top: 6px; font-variant-numeric: tabular-nums; line-height: 1.05; }
+  .kpi .sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .val.ok { color: var(--ok); } .val.warn { color: var(--warn); } .val.bad { color: var(--bad); }
+
+  .filtros { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .filtros .field { min-width: 150px; }
+  .filtros .field.busca { flex: 1; min-width: 200px; }
+
+  .charts { display: grid; grid-template-columns: 1.3fr 1fr; gap: 20px; margin-bottom: 20px; }
+  @media (max-width: 1000px) { .charts { grid-template-columns: 1fr; } }
+  .chart-box { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+  .chart-box h3 { margin: 0 0 4px; font-size: 13px; }
+  .chart-box .hint { font-size: 11px; color: var(--muted); margin: 0 0 10px; }
+  .chart-box svg { width: 100%; display: block; }
+  .empty-chart { color: var(--muted); font-size: 12.5px; padding: 30px 0; text-align: center; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody tr:hover { background: rgba(255,255,255,.02); }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .pill.ok { background: var(--ok-bg); color: var(--ok); }
+  .pill.warn { background: var(--warn-bg); color: var(--warn); }
+  .pill.bad { background: var(--bad-bg); color: var(--bad); }
+  .pill.neutral { background: var(--spot-bg); color: var(--spot); }
+  .act { display: flex; gap: 6px; }
+  .act button { padding: 5px 10px; font-size: 12px; font-weight: 400; background: transparent;
+    border: 1px solid var(--border); color: var(--text); }
+  .act button.del:hover { border-color: var(--bad); color: var(--bad); }
+  .empty { color: var(--muted); font-size: 13px; padding: 24px 0; text-align: center; }
+  .table-wrap { overflow-x: auto; }
+
+  .toggle { width: 24px; height: 24px; padding: 0; font-size: 15px; line-height: 1; font-weight: 700;
+    background: transparent; border: 1px solid var(--border); color: var(--text); border-radius: 5px; }
+  .toggle:hover { border-color: var(--volix); color: var(--volix); }
+  tr.detail > td { padding: 4px 10px 10px; background: rgba(255,255,255,.015); }
+  .itens-box { padding: 6px 2px 6px; }
+  .itens-tit { font-size: 11.5px; color: var(--muted); margin: 6px 0 8px; text-transform: uppercase; letter-spacing: .03em; }
+  .itens-tbl { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 6px; }
+  .itens-tbl th { background: transparent; color: var(--muted); font-size: 10px; }
+  .itens-tbl td, .itens-tbl th { padding: 6px 9px; border-bottom: 1px solid var(--border); }
+  .itens-tbl td.desc { white-space: normal; min-width: 200px; }
+  .sem-itens { color: var(--muted); font-size: 12px; padding: 8px 4px; }
+  .nf-bloco { margin: 4px 0 12px; padding-left: 10px; border-left: 2px solid var(--border); }
+  .nf-cab { font-size: 12.5px; margin: 2px 0 6px; }
+  .rmnf { width: 22px; height: 22px; padding: 0; font-size: 14px; line-height: 1; background: transparent;
+    border: 1px solid var(--border); color: var(--muted); border-radius: 5px; font-weight: 700; }
+  .rmnf:hover { border-color: var(--bad); color: var(--bad); }
+
+  #importNota { display: none; font-size: 12.5px; margin-bottom: 12px; padding: 9px 12px; border-radius: 7px; }
+  #importNota.ok { background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok); }
+  #importNota.warn { background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn); }
+  #erro { display: none; color: var(--bad); background: var(--bad-bg); border: 1px solid var(--bad);
+    border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <img class="brand-iso" width="42" height="42" src="/static/volix-selo-grafite.svg" alt="Volix">
+    <div class="volix">Log<b>H</b>ub</div>
+    <div class="glow"></div>
+    <div class="tag">Sua logística <b>num só lugar</b></div>
+  </div>
+  <nav class="side-nav">
+    <a href="/home">🏠 Início</a>
+    <div class="sec">Financeiro</div>
+    <a href="/audit">📋 Auditoria de CTe</a>
+    <a href="/percent-nf">💰 Frete sobre Faturamento</a>
+    <a href="/conferencia">🧾 Conferência de Fatura</a>
+    <div class="sec">Suprimentos</div>
+    <a href="/coletas" class="active">🚚 Coleta em Fornecedores</a>
+    <div class="sec">Expedição</div>
+    <a href="/romaneio">📦 Romaneio de Expedição</a>
+    <div class="sec">Entregas</div>
+    <a href="/tracking">🗼 Torre de Controle</a>
+    <a href="/relatorio-dia">📨 Relatório do Dia</a>
+    <a href="/scorecard">🏆 Scorecard de Desempenho</a>
+    <div class="sec">Comercial</div>    <a href="/vendas">📈 Análise de Vendas</a>
+    <div class="sec">Configuração</div>
+    <a href="/cadastro">🗂️ Cadastro de Tabelas</a>
+  </nav>
+</aside>
+
+<header>
+  <img class="vmark vmark-dark" width="40" height="40" src="/static/volix-selo-grafite.svg" alt="Volix"><img class="vmark vmark-light" width="40" height="40" src="/static/volix-selo-principal.svg" alt="Volix">
+  <h1>Coleta em Fornecedores</h1>
+  <p>Cada coleta reúne <b>várias NFs</b> (uma ou mais carretas) com <b>um frete total</b>. Importe todos os XMLs das NFs de uma vez, informe o nº de carretas e o frete — o painel soma as NFs e calcula o <b>% do frete</b> (frete ÷ Σ das NFs).</p>
+</header>
+
+<main>
+  <div id="erro"></div>
+
+  <!-- Lançamento da coleta -->
+  <div class="panel">
+    <div class="form-head">
+      <h2 id="formTitulo" style="margin:0;">Nova coleta</h2>
+      <div>
+        <button type="button" class="secondary" id="importarBtn">📥 Importar XMLs das NFs</button>
+        <input type="file" id="xmlInput" accept=".xml,text/xml,application/xml" multiple style="display:none;" />
+      </div>
+    </div>
+    <div id="importNota"></div>
+    <input type="hidden" id="f_id" />
+    <div class="form-grid">
+      <div class="field"><label for="f_data_coleta">Data da coleta</label><input type="date" id="f_data_coleta" /></div>
+      <div class="field"><label for="f_fornecedor">Fornecedor</label><input id="f_fornecedor" autocomplete="off" placeholder="Nome do fornecedor" /></div>
+      <div class="field"><label for="f_transportadora">Transportadora</label><input id="f_transportadora" autocomplete="off" list="dlTransp" placeholder="Transportadora" /><datalist id="dlTransp"></datalist></div>
+      <div class="field"><label for="f_status">Status da coleta</label><select id="f_status"></select></div>
+
+      <div class="field"><label for="f_origem">Origem (onde é a coleta)</label><input id="f_origem" autocomplete="off" placeholder="Cidade/UF do fornecedor" /></div>
+      <div class="field"><label for="f_destino">Destino</label><input id="f_destino" autocomplete="off" placeholder="Cidade/UF de entrega" /></div>
+      <div class="field"><label for="f_previsao_entrega">Previsão de entrega</label><input type="date" id="f_previsao_entrega" /></div>
+      <div class="field"><label for="f_valor_nf">Valor das NFs (R$)</label><input type="number" step="0.01" min="0" id="f_valor_nf" placeholder="0,00" /></div>
+
+      <div class="field"><label for="f_qtd_carretas">Nº de carretas</label><input type="number" min="1" step="1" id="f_qtd_carretas" value="1" /></div>
+      <div class="field"><label for="f_frete_carreta">Frete por carreta (R$)</label><input type="number" step="0.01" min="0" id="f_frete_carreta" placeholder="0,00" /></div>
+      <div class="field" style="grid-column: span 2;"><label for="f_observacoes">Observações</label><input id="f_observacoes" autocomplete="off" placeholder="Opcional" /></div>
+    </div>
+
+    <div id="nfList"></div>
+
+    <div class="form-foot">
+      <button id="salvarBtn" type="button">Salvar coleta</button>
+      <button id="cancelarBtn" type="button" class="secondary" style="display:none;">Cancelar edição</button>
+      <div class="live">
+        <span>Valor das NFs: <b id="liveNf">R$ 0,00</b></span>
+        <span>Frete total: <b id="liveFrete">R$ 0,00</b></span>
+        <span>% frete: <b id="livePct" class="live-val">—</b></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpis">
+    <div class="kpi hero">
+      <div class="label">Custo médio de frete (%NF)</div>
+      <div class="val" id="kpiPct">—</div>
+      <div class="sub" id="kpiPctSub">ponderado: Σ frete ÷ Σ valor NF</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Coletas</div>
+      <div class="val" id="kpiQtd">—</div>
+      <div class="sub" id="kpiQtdSub">&nbsp;</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Frete total</div>
+      <div class="val" id="kpiFrete">—</div>
+      <div class="sub">soma dos fretes lançados</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Valor das NFs</div>
+      <div class="val" id="kpiNf">—</div>
+      <div class="sub">base do custo médio</div>
+    </div>
+  </div>
+
+  <!-- Gráficos -->
+  <div class="charts">
+    <div class="chart-box">
+      <h3>Custo médio de frete por mês</h3>
+      <p class="hint">Evolução do % de frete sobre a NF (menor é melhor).</p>
+      <div id="chartMensal"></div>
+    </div>
+    <div class="chart-box">
+      <h3>Custo médio por transportadora</h3>
+      <p class="hint">% de frete sobre a NF — maior no topo.</p>
+      <div id="chartTransp"></div>
+    </div>
+  </div>
+
+  <!-- Filtros + tabela -->
+  <div class="panel">
+    <div class="form-head">
+      <h2 style="margin:0;">Coletas lançadas</h2>
+      <button type="button" class="secondary" id="exportarBtn">⬇ Baixar Excel</button>
+    </div>
+    <div class="filtros" style="margin-bottom:16px;">
+      <div class="field"><label for="filtroMes">Mês</label><select id="filtroMes"><option value="">Todos</option></select></div>
+      <div class="field"><label for="filtroStatus">Status</label><select id="filtroStatus"><option value="">Todos</option></select></div>
+      <div class="field busca"><label for="filtroBusca">Buscar (fornecedor, NF, origem, destino)</label><input id="filtroBusca" autocomplete="off" placeholder="Digite para filtrar…" /></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:30px;"></th>
+            <th>Data</th><th>Fornecedor</th>
+            <th class="num">NFs</th><th class="num">Valor NFs</th><th class="num">Carretas</th>
+            <th class="num">Frete</th><th class="num">% Frete</th>
+            <th>Transportadora</th><th>Origem</th><th>Destino</th>
+            <th>Prev. entrega</th><th>Status</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div id="carregando" class="empty" style="display:none;" aria-live="polite">Carregando coletas…</div>
+      <div id="pager"></div>
+    </div>
+    <div id="vazio" class="empty" style="display:none;">Nenhuma coleta lançada ainda. Importe os XMLs acima.</div>
+  </div>
+</main>
+
+<script src="/static/auth.js" defer></script>
+<script src="/static/pager.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+  { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const money = v => (v == null ? '—' : Number(v).toLocaleString('pt-BR', { style:'currency', currency:'BRL' }));
+const pctFmt = p => (p == null ? '—' : p.toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 }) + '%');
+const dataBR = iso => (iso && iso.length >= 10) ? iso.slice(8,10)+'/'+iso.slice(5,7)+'/'+iso.slice(0,4) : (iso || '—');
+
+const OK_ATE = 10, WARN_ATE = 18;
+const classePct = p => (p == null ? 'neutral' : p <= OK_ATE ? 'ok' : p <= WARN_ATE ? 'warn' : 'bad');
+
+let STATUS_OPCOES = [];
+let notas = [];  // NFs do lançamento atual (do importador de XML)
+let OFFSET = 0, LIMIT = 100, TOTAL = 0;
+
+function erro(msg) { const e = $('#erro'); e.textContent = msg || ''; e.style.display = msg ? 'block' : 'none'; }
+function notaImport(msg, tipo) {
+  const el = $('#importNota');
+  el.innerHTML = msg || '';
+  el.className = msg ? (tipo || 'ok') : '';
+  el.style.display = msg ? 'block' : 'none';
+}
+
+// ─── Carregar/render ────────────────────────────────────────────────────────
+// Trocar filtro/busca volta à 1ª página; navegar no pager preserva os filtros.
+function aplicar() { OFFSET = 0; carregar(); }
+
+async function carregar() {
+  erro('');
+  $('#vazio').style.display = 'none';
+  $('#carregando').style.display = '';
+  const p = new URLSearchParams();
+  if ($('#filtroMes').value) p.set('mes', $('#filtroMes').value);
+  if ($('#filtroStatus').value) p.set('status', $('#filtroStatus').value);
+  if ($('#filtroBusca').value.trim()) p.set('search', $('#filtroBusca').value.trim());
+  p.set('limit', LIMIT); p.set('offset', OFFSET);
+  let d;
+  try {
+    const r = await fetch('/api/coletas?' + p.toString());
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    d = await r.json();
+  } catch (e) {
+    $('#carregando').style.display = 'none';
+    const el = $('#erro');
+    el.innerHTML = 'Não foi possível carregar as coletas. ';
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'secondary'; b.textContent = 'Tentar de novo';
+    b.addEventListener('click', carregar); el.appendChild(b); el.style.display = 'block';
+    return;
+  }
+  $('#carregando').style.display = 'none';
+
+  // Página além do fim (ex.: após excluir a última linha) → recua e recarrega.
+  TOTAL = (d.total != null) ? d.total : (d.coletas || []).length;
+  if (OFFSET > 0 && OFFSET >= TOTAL) { OFFSET = Math.max(0, (Math.ceil(TOTAL / LIMIT) - 1)) * LIMIT; return carregar(); }
+
+  if (!STATUS_OPCOES.length && d.status_opcoes) {
+    STATUS_OPCOES = d.status_opcoes;
+    $('#f_status').innerHTML = STATUS_OPCOES.map(s => `<option>${esc(s)}</option>`).join('');
+    $('#filtroStatus').innerHTML = '<option value="">Todos</option>' +
+      STATUS_OPCOES.map(s => `<option>${esc(s)}</option>`).join('');
+  }
+  $('#dlTransp').innerHTML = (d.transportadoras || []).map(t => `<option value="${esc(t)}">`).join('');
+  const mSel = $('#filtroMes').value;
+  $('#filtroMes').innerHTML = '<option value="">Todos</option>' +
+    (d.meses || []).map(m => `<option${m === mSel ? ' selected' : ''}>${esc(m)}</option>`).join('');
+
+  renderKpis(d.resumo || {});
+  renderTabela(d.coletas || []);
+  renderChartMensal(d.serie_mensal || []);
+  renderChartTransp(d.por_transportadora || []);
+  Pager.render($('#pager'), {
+    offset: OFFSET, limit: LIMIT, total: TOTAL, pageSizes: [50, 100, 200],
+    onGo: (novo) => { OFFSET = novo; carregar(); },
+    onLimit: (novo) => { LIMIT = novo; OFFSET = 0; carregar(); },
+  });
+}
+
+function renderKpis(r) {
+  const pct = r.custo_medio_pct;
+  const k = $('#kpiPct'); k.textContent = pctFmt(pct); k.className = 'val ' + classePct(pct);
+  $('#kpiPctSub').textContent = (r.custo_medio_pct_simples != null)
+    ? `ponderado · média simples ${pctFmt(r.custo_medio_pct_simples)}` : 'ponderado: Σ frete ÷ Σ valor NF';
+  $('#kpiQtd').textContent = (r.coletas || 0).toLocaleString('pt-BR');
+  $('#kpiQtdSub').textContent = `${r.nfs || 0} NFs · ${r.carretas || 0} carretas`;
+  $('#kpiFrete').textContent = money(r.frete_total || 0);
+  $('#kpiNf').textContent = money(r.valor_nf || 0);
+}
+
+function statusPill(s) {
+  const cls = s === 'Entregue' ? 'ok' : s === 'Cancelada' ? 'bad' : s === 'Em trânsito' ? 'warn' : 'neutral';
+  return `<span class="pill ${cls}">${esc(s || '—')}</span>`;
+}
+
+function notaBloco(n) {
+  const its = n.itens || [];
+  const prod = its.length ? `<table class="itens-tbl">
+      <thead><tr><th>Código</th><th>Descrição</th><th>NCM</th><th class="num">Qtd</th><th class="num">Vl. unit.</th><th class="num">Vl. total</th></tr></thead>
+      <tbody>${its.map(p => `<tr>
+        <td>${esc(p.codigo) || '—'}</td>
+        <td class="desc">${esc(p.descricao) || '—'}</td>
+        <td>${esc(p.ncm) || '—'}</td>
+        <td class="num">${p.quantidade != null ? Number(p.quantidade).toLocaleString('pt-BR', { maximumFractionDigits:4 }) : '—'} ${esc(p.unidade || '')}</td>
+        <td class="num">${p.valor_unitario != null ? money(p.valor_unitario) : '—'}</td>
+        <td class="num">${p.valor_total != null ? money(p.valor_total) : '—'}</td>
+      </tr>`).join('')}</tbody></table>` : '<div class="sem-itens">Sem produtos nesta NF.</div>';
+  return `<div class="nf-bloco"><div class="nf-cab">NF <b>${esc(n.numero) || '—'}</b> · ${esc(n.fornecedor) || '—'} · <b>${money(n.valor)}</b> · ${its.length} produto(s)</div>${prod}</div>`;
+}
+
+function detalheHtml(c) {
+  const ns = c.notas || [];
+  if (!ns.length) return '<div class="sem-itens">Coleta manual — sem NFs importadas.</div>';
+  return `<div class="itens-box">
+    <div class="itens-tit">📦 ${ns.length} nota(s) fiscal(is) · ${c.qtd_itens || 0} produto(s) no total</div>
+    ${ns.map(notaBloco).join('')}
+  </div>`;
+}
+
+function renderTabela(rows) {
+  const tb = $('#tbody');
+  $('#vazio').style.display = rows.length ? 'none' : 'block';
+  tb.innerHTML = rows.map(c => {
+    const nf = c.qtd_nfs || 0;
+    return `
+    <tr>
+      <td><button type="button" class="toggle" id="tg-${c.id}" onclick="toggleDet(${c.id})" title="Ver ${nf} NF(s)">+</button></td>
+      <td>${dataBR(c.data_coleta)}</td>
+      <td>${esc(c.fornecedor) || '—'}</td>
+      <td class="num">${nf}</td>
+      <td class="num">${money(c.valor_nf)}</td>
+      <td class="num">${c.qtd_carretas || 1}</td>
+      <td class="num">${money(c.valor_frete)}</td>
+      <td class="num"><span class="pill ${classePct(c.pct_frete)}">${pctFmt(c.pct_frete)}</span></td>
+      <td>${esc(c.transportadora) || '—'}</td>
+      <td>${esc(c.origem) || '—'}</td>
+      <td>${esc(c.destino) || '—'}</td>
+      <td>${dataBR(c.previsao_entrega)}</td>
+      <td>${statusPill(c.status)}</td>
+      <td><div class="act">
+        <button type="button" onclick="editar(${c.id})">Editar</button>
+        <button type="button" class="del" onclick="excluir(${c.id})">Excluir</button>
+      </div></td>
+    </tr>
+    <tr class="detail" id="det-${c.id}" style="display:none;"><td colspan="14">${detalheHtml(c)}</td></tr>`;
+  }).join('');
+  window._rows = rows;
+}
+
+function toggleDet(id) {
+  const det = document.getElementById('det-' + id);
+  const btn = document.getElementById('tg-' + id);
+  if (!det) return;
+  const abrir = det.style.display === 'none';
+  det.style.display = abrir ? 'table-row' : 'none';
+  if (btn) btn.textContent = abrir ? '−' : '+';
+}
+
+// ─── Gráfico: evolução mensal (linha) ───────────────────────────────────────
+function renderChartMensal(serie) {
+  const box = $('#chartMensal');
+  const pts = serie.filter(s => s.pct_frete != null);
+  if (pts.length === 0) { box.innerHTML = '<div class="empty-chart">Sem dados com valor de NF para calcular.</div>'; return; }
+  const W = 560, H = 240, ml = 44, mr = 14, mt = 16, mb = 34;
+  const iw = W - ml - mr, ih = H - mt - mb;
+  const maxP = Math.max(...pts.map(p => p.pct_frete), 1);
+  const maxY = Math.ceil(maxP / 5) * 5 || 5;
+  const x = i => ml + (pts.length === 1 ? iw/2 : iw * i / (pts.length - 1));
+  const y = v => mt + ih - (v / maxY) * ih;
+  const gridY = [0, maxY/2, maxY].map(v =>
+    `<line x1="${ml}" y1="${y(v)}" x2="${W-mr}" y2="${y(v)}" stroke="var(--border)" stroke-width="1"/>
+     <text x="${ml-6}" y="${y(v)+3}" text-anchor="end" font-size="10" fill="var(--muted)">${v}%</text>`).join('');
+  const line = pts.map((p,i) => `${i?'L':'M'}${x(i).toFixed(1)},${y(p.pct_frete).toFixed(1)}`).join(' ');
+  const area = `M${x(0).toFixed(1)},${y(0)} ` + pts.map((p,i)=>`L${x(i).toFixed(1)},${y(p.pct_frete).toFixed(1)}`).join(' ') + ` L${x(pts.length-1).toFixed(1)},${y(0)} Z`;
+  const dots = pts.map((p,i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p.pct_frete).toFixed(1)}" r="3.5" fill="var(--accent)"><title>${p.mes}: ${pctFmt(p.pct_frete)} (${p.coletas} coleta(s))</title></circle>
+     <text x="${x(i).toFixed(1)}" y="${y(p.pct_frete)-9}" text-anchor="middle" font-size="9.5" fill="var(--text)">${p.pct_frete.toFixed(1)}</text>`).join('');
+  const labels = pts.map((p,i) => `<text x="${x(i).toFixed(1)}" y="${H-14}" text-anchor="middle" font-size="10" fill="var(--muted)">${p.mes.slice(5)}/${p.mes.slice(2,4)}</text>`).join('');
+  box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolução do custo médio de frete por mês">
+    ${gridY}
+    <path d="${area}" fill="var(--accent)" opacity="0.08"/>
+    <path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${dots}${labels}
+  </svg>`;
+}
+
+// ─── Gráfico: por transportadora (barras) ───────────────────────────────────
+function renderChartTransp(rows) {
+  const box = $('#chartTransp');
+  const pts = rows.filter(r => r.pct_frete != null).slice(0, 8);
+  if (pts.length === 0) { box.innerHTML = '<div class="empty-chart">Sem dados com valor de NF para calcular.</div>'; return; }
+  const rowH = 30, W = 460, ml = 4, mr = 54, top = 6;
+  const H = top*2 + pts.length * rowH;
+  const barMax = W - ml - mr - 120;
+  const maxP = Math.max(...pts.map(p => p.pct_frete), 1);
+  const cor = p => p <= OK_ATE ? 'var(--ok)' : p <= WARN_ATE ? 'var(--warn)' : 'var(--bad)';
+  const bars = pts.map((p,i) => {
+    const cy = top + i*rowH;
+    const w = Math.max(2, barMax * p.pct_frete / maxP);
+    const nome = p.transportadora.length > 16 ? p.transportadora.slice(0,15)+'…' : p.transportadora;
+    return `<text x="${ml}" y="${cy+rowH/2+4}" font-size="11" fill="var(--text)">${esc(nome)}</text>
+      <rect x="120" y="${cy+6}" width="${w.toFixed(1)}" height="${rowH-14}" rx="3" fill="${cor(p.pct_frete)}"><title>${esc(p.transportadora)}: ${pctFmt(p.pct_frete)} — ${p.coletas} coleta(s)</title></rect>
+      <text x="${(120+w+6).toFixed(1)}" y="${cy+rowH/2+4}" font-size="11" fill="var(--muted)" font-variant-numeric="tabular-nums">${p.pct_frete.toFixed(1)}%</text>`;
+  }).join('');
+  box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Custo médio de frete por transportadora">${bars}</svg>`;
+}
+
+// ─── Formulário / NFs ───────────────────────────────────────────────────────
+function somaNotas() { return notas.reduce((s,n) => s + Number(n.valor || 0), 0); }
+function freteTotal() { return (parseInt($('#f_qtd_carretas').value) || 1) * (parseFloat($('#f_frete_carreta').value) || 0); }
+
+function atualizaValorNf() {
+  const inp = $('#f_valor_nf');
+  if (notas.length) { inp.value = somaNotas().toFixed(2); inp.disabled = true; }
+  else { inp.disabled = false; }
+}
+
+function atualizaLive() {
+  const nf = notas.length ? somaNotas() : (parseFloat($('#f_valor_nf').value) || 0);
+  const ft = freteTotal();
+  $('#liveNf').textContent = money(nf);
+  $('#liveFrete').textContent = money(ft);
+  const pct = nf > 0 ? Math.round(ft / nf * 10000) / 100 : null;
+  const el = $('#livePct'); el.textContent = pct == null ? '—' : pctFmt(pct); el.className = 'live-val ' + classePct(pct);
+}
+
+function renderNfListForm() {
+  const box = $('#nfList');
+  if (!notas.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = 'block';
+  const rows = notas.map((n,i) => `<tr>
+    <td>${esc(n.numero) || '—'}</td>
+    <td class="desc">${esc(n.fornecedor) || '—'}</td>
+    <td class="num">${money(n.valor)}</td>
+    <td class="num">${(n.itens || []).length}</td>
+    <td style="text-align:right;"><button type="button" class="rmnf" onclick="removerNota(${i})" aria-label="Remover esta NF da coleta" title="Remover NF">×</button></td>
+  </tr>`).join('');
+  box.innerHTML = `<div class="itens-tit">📦 NFs desta coleta (${notas.length}) — total ${money(somaNotas())}</div>
+    <table class="itens-tbl">
+      <thead><tr><th>Nº NF</th><th>Fornecedor</th><th class="num">Valor</th><th class="num">Produtos</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function removerNota(i) {
+  notas.splice(i, 1);
+  atualizaValorNf();
+  renderNfListForm();
+  atualizaLive();
+}
+
+// ─── Importar vários XMLs ───────────────────────────────────────────────────
+async function importarXmls(fileList) {
+  erro(''); notaImport('Lendo XMLs…', 'ok');
+  const fd = new FormData();
+  Array.from(fileList).forEach(f => fd.append('files', f));
+  let d;
+  try {
+    const r = await fetch('/api/coletas/importar-xml', { method: 'POST', body: fd });
+    d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.detail || ('HTTP ' + r.status));
+  } catch (e) { notaImport('Não foi possível ler os XMLs: ' + esc(e.message), 'warn'); return; }
+
+  const novas = d.notas || [];
+  notas = notas.concat(novas);  // permite importar em várias levas
+  if (!$('#f_fornecedor').value && d.fornecedor) $('#f_fornecedor').value = d.fornecedor;
+  if (!$('#f_origem').value && d.origem) $('#f_origem').value = d.origem;
+  if (!$('#f_destino').value && d.destino) $('#f_destino').value = d.destino;
+  if (!$('#f_transportadora').value && d.transportadora) $('#f_transportadora').value = d.transportadora;
+  if (!$('#f_data_coleta').value && d.data_coleta) $('#f_data_coleta').value = d.data_coleta;
+  atualizaValorNf();
+  renderNfListForm();
+  atualizaLive();
+
+  const errs = (d.erros || []).length;
+  const dup = (d.duplicadas || []).length;
+  let msg = `✔ <b>${novas.length}</b> NF(s) lida(s) (total no lançamento: <b>${notas.length}</b>, ${money(somaNotas())}).`;
+  if (dup) msg += ` ⚠️ ${dup} NF(s) já lançada(s) antes.`;
+  if (errs) msg += ` ${errs} arquivo(s) com erro.`;
+  msg += ' Informe o <b>nº de carretas</b> e o <b>frete por carreta</b>, e salve.';
+  notaImport(msg, (dup || errs) ? 'warn' : 'ok');
+}
+
+// ─── Salvar / editar / excluir ──────────────────────────────────────────────
+function limparForm() {
+  $('#f_id').value = '';
+  ['f_data_coleta','f_fornecedor','f_transportadora','f_origem','f_destino',
+   'f_previsao_entrega','f_valor_nf','f_frete_carreta','f_observacoes'].forEach(id => $('#'+id).value = '');
+  $('#f_qtd_carretas').value = '1';
+  $('#f_valor_nf').disabled = false;
+  if (STATUS_OPCOES.length) $('#f_status').value = STATUS_OPCOES[0];
+  notas = [];
+  renderNfListForm(); notaImport('');
+  $('#formTitulo').textContent = 'Nova coleta';
+  $('#cancelarBtn').style.display = 'none';
+  atualizaLive();
+}
+
+function coletar() {
+  return {
+    data_coleta: $('#f_data_coleta').value,
+    fornecedor: $('#f_fornecedor').value,
+    transportadora: $('#f_transportadora').value,
+    origem: $('#f_origem').value,
+    destino: $('#f_destino').value,
+    previsao_entrega: $('#f_previsao_entrega').value,
+    status: $('#f_status').value,
+    observacoes: $('#f_observacoes').value,
+    qtd_carretas: parseInt($('#f_qtd_carretas').value) || 1,
+    valor_frete: freteTotal(),
+    valor_nf: notas.length ? somaNotas() : (parseFloat($('#f_valor_nf').value) || 0),
+    notas: notas,
+  };
+}
+
+async function salvar() {
+  erro('');
+  const dados = coletar();
+  if (!dados.fornecedor.trim()) { erro('Informe o fornecedor.'); $('#f_fornecedor').focus(); return; }
+  if (!dados.data_coleta) { erro('Informe a data da coleta.'); $('#f_data_coleta').focus(); return; }
+  const id = $('#f_id').value;
+  const btn = $('#salvarBtn'); btn.disabled = true;
+  try {
+    const r = await fetch(id ? '/api/coletas/' + id : '/api/coletas', {
+      method: id ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dados),
+    });
+    if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.detail || ('HTTP ' + r.status)); }
+    limparForm();
+    await carregar();
+  } catch (e) { erro('Não foi possível salvar: ' + e.message); }
+  finally { btn.disabled = false; }
+}
+
+function editar(id) {
+  const c = (window._rows || []).find(r => r.id === id);
+  if (!c) return;
+  $('#f_id').value = c.id;
+  $('#f_data_coleta').value = (c.data_coleta || '').slice(0,10);
+  $('#f_fornecedor').value = c.fornecedor || '';
+  $('#f_transportadora').value = c.transportadora || '';
+  $('#f_origem').value = c.origem || '';
+  $('#f_destino').value = c.destino || '';
+  $('#f_previsao_entrega').value = (c.previsao_entrega || '').slice(0,10);
+  $('#f_status').value = c.status || (STATUS_OPCOES[0] || '');
+  $('#f_observacoes').value = c.observacoes || '';
+  $('#f_qtd_carretas').value = c.qtd_carretas || 1;
+  const qc = c.qtd_carretas || 1;
+  $('#f_frete_carreta').value = qc ? (Number(c.valor_frete || 0) / qc).toFixed(2) : (c.valor_frete || '');
+  notas = Array.isArray(c.notas) ? c.notas.slice() : [];
+  $('#f_valor_nf').value = Number(c.valor_nf || 0).toFixed(2);
+  atualizaValorNf();
+  renderNfListForm();
+  notaImport(notas.length ? `Editando — ${notas.length} NF(s) mantidas nesta coleta.` : '');
+  $('#formTitulo').textContent = 'Editando coleta #' + c.id;
+  $('#cancelarBtn').style.display = 'inline-block';
+  atualizaLive();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function excluir(id) {
+  const c = (window._rows || []).find(r => r.id === id);
+  const nome = c ? (c.fornecedor || '') : '';
+  if (!confirm('Excluir a coleta' + (nome ? ' de "' + nome + '"' : '') + '? Esta ação não pode ser desfeita.')) return;
+  erro('');
+  try {
+    const r = await fetch('/api/coletas/' + id, { method: 'DELETE' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if ($('#f_id').value === String(id)) limparForm();
+    await carregar();
+  } catch (e) { erro('Não foi possível excluir: ' + e.message); }
+}
+
+function exportarExcel() {
+  const p = new URLSearchParams();
+  if ($('#filtroMes').value) p.set('mes', $('#filtroMes').value);
+  if ($('#filtroStatus').value) p.set('status', $('#filtroStatus').value);
+  if ($('#filtroBusca').value.trim()) p.set('search', $('#filtroBusca').value.trim());
+  window.location.href = '/api/coletas/export.xlsx?' + p.toString();
+}
+
+// ─── Eventos ────────────────────────────────────────────────────────────────
+$('#salvarBtn').addEventListener('click', salvar);
+$('#cancelarBtn').addEventListener('click', limparForm);
+$('#importarBtn').addEventListener('click', () => $('#xmlInput').click());
+$('#xmlInput').addEventListener('change', (e) => {
+  if (e.target.files && e.target.files.length) importarXmls(e.target.files);
+  e.target.value = '';
+});
+$('#exportarBtn').addEventListener('click', exportarExcel);
+['f_valor_nf','f_qtd_carretas','f_frete_carreta'].forEach(id => $('#'+id).addEventListener('input', atualizaLive));
+$('#filtroMes').addEventListener('change', aplicar);
+$('#filtroStatus').addEventListener('change', aplicar);
+let buscaTimer;
+$('#filtroBusca').addEventListener('input', () => { clearTimeout(buscaTimer); buscaTimer = setTimeout(aplicar, 300); });
+
+carregar();
+</script>
+</body>
+</html>

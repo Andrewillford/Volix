@@ -1,0 +1,20 @@
+version: "3.9"
+
+services:
+  freight-gateway:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      # Monte a pasta com suas tabelas Excel/CSV aqui (rw pois o auditor grava o mapeamento CNPJ)
+      - ./tables:/app/tables
+      # Pasta base do fluxo de CTe: entrada/ (drop dos XML) e processados/ok, processados/nok
+      # (organizados automaticamente após a auditoria)
+      - ./cte_xml:/app/cte_xml
+      # Pasta do fluxo EDI OCOREN (torre de controle): entrada/ e processados/
+      - ./edi:/app/edi
+    environment:
+      - TABLES_DIR=/app/tables
+      - CTE_DIR=/app/cte_xml
+      - EDI_DIR=/app/edi
+    restart: unless-stopped

@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Usuários — LogHub</title>
+<link rel="stylesheet" href="/static/volix.css" />
+<style>
+  main { max-width: 1200px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 20px; }
+  .panel h2 { margin: 0 0 12px; font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  button { background: var(--volix); color: #0a0d12; border: none; padding: 9px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 700; }
+  button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); font-weight: 400; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 10px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+  tbody tr:hover { background: rgba(255,255,255,.02); }
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge.admin { background: rgba(139,195,74,.15); color: var(--volix); }
+  .badge.user { background: var(--spot-bg); color: var(--spot); }
+  .badge.off { background: var(--bad-bg); color: var(--bad); }
+  .act { display: flex; gap: 6px; }
+  .act button { padding: 5px 10px; font-size: 12px; font-weight: 400; }
+  .empty { color: var(--muted); font-size: 13px; padding: 24px 0; text-align: center; }
+  .restrito { color: var(--warn); background: var(--warn-bg); border-radius: 8px; padding: 16px; font-size: 13px; }
+  /* modal */
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 100; }
+  .modal.open { display: flex; }
+  .modal .box { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 22px; width: 380px; max-width: 92vw; }
+  .modal h3 { margin: 0 0 16px; font-size: 16px; }
+  .field { margin-bottom: 13px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+  .field input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 9px 10px; font-size: 13px; }
+  .field.check { display: flex; align-items: center; gap: 8px; }
+  .field.check input { width: auto; }
+  .field.check label { margin: 0; }
+  .modal .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+  .modal .erro { color: var(--bad); font-size: 12.5px; margin-bottom: 10px; display: none; }
+  .perm-sec { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted);
+    margin: 14px 0 6px; border-top: 1px solid var(--border); padding-top: 10px; }
+  .field.check.mini { margin-bottom: 7px; }
+  .field.check.mini label { font-size: 12.5px; }
+  #permBloco.off { opacity: .4; pointer-events: none; }
+  .perm-nota { font-size: 11.5px; color: var(--volix); margin: 4px 0 0; display: none; }
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="brand">
+    <img class="brand-iso" width="42" height="42" src="/static/volix-selo-grafite.svg" alt="Volix">
+    <div class="volix">Log<b>H</b>ub</div>
+    <div class="glow"></div>
+    <div class="tag">Sua logística <b>num só lugar</b></div>
+  </div>
+  <nav class="side-nav">
+    <a href="/home">🏠 Início</a>
+    <div class="sec">Financeiro</div>
+    <a href="/audit">📋 Auditoria de CTe</a>
+    <a href="/percent-nf">💰 Frete sobre Faturamento</a>
+    <div class="sec">Suprimentos</div>
+    <a href="/coletas">🚚 Coleta em Fornecedores</a>
+    <div class="sec">Expedição</div>
+    <a href="/romaneio">📦 Romaneio de Expedição</a>
+    <div class="sec">Entregas</div>
+    <a href="/tracking">🗼 Torre de Controle</a>
+    <a href="/relatorio-dia">📨 Relatório do Dia</a>
+    <a href="/scorecard">🏆 Scorecard de Desempenho</a>
+    <div class="sec">Comercial</div>    <a href="/vendas">📈 Análise de Vendas</a>
+    <div class="sec">Configuração</div>
+    <a href="/cadastro">🗂️ Cadastro de Tabelas</a>
+  </nav>
+</aside>
+
+<header>
+  <h1>Usuários</h1>
+  <p>Gerencie quem pode acessar os painéis. Todos os usuários veem todos os painéis; o administrador também gerencia logins.</p>
+</header>
+
+<main>
+  <div id="restrito" class="restrito" style="display:none;">
+    Acesso restrito: apenas administradores podem gerenciar usuários.
+  </div>
+  <div id="conteudo" style="display:none;">
+    <div class="panel">
+      <div class="toolbar">
+        <h2 style="margin:0;">Usuários cadastrados</h2>
+        <button id="novoBtn">+ Novo usuário</button>
+      </div>
+      <table>
+        <thead><tr><th>Usuário</th><th>Nome</th><th>Perfil</th><th>Situação</th><th></th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div id="vazio" class="empty" style="display:none;">Nenhum usuário além de você.</div>
+    </div>
+  </div>
+</main>
+
+<!-- Modal -->
+<div class="modal" id="modal">
+  <div class="box">
+    <h3 id="modalTitulo">Novo usuário</h3>
+    <div id="modalErro" class="erro"></div>
+    <input type="hidden" id="mId" />
+    <div class="field"><label for="mNome">Nome</label><input id="mNome" autocomplete="off" /></div>
+    <div class="field"><label for="mLogin">Usuário (login)</label><input id="mLogin" autocomplete="off" /></div>
+    <div class="field"><label id="mSenhaLabel" for="mSenha">Senha (mín. 4 caracteres)</label><input id="mSenha" type="password" autocomplete="new-password" /></div>
+    <div class="field check"><input type="checkbox" id="mAdmin" /><label for="mAdmin">Administrador (pode gerenciar usuários)</label></div>
+    <div class="field check"><input type="checkbox" id="mAtivo" checked /><label for="mAtivo">Ativo (pode entrar)</label></div>
+    <p id="permNota" class="perm-nota">Administrador tem acesso total — as permissões abaixo são ignoradas.</p>
+
+    <div id="permBloco">
+      <div class="perm-sec">Áreas que pode ver</div>
+      <div class="field check mini"><input type="checkbox" id="a_financeiro" /><label for="a_financeiro">🟢 Financeiro (Auditoria, %NF, Conferência)</label></div>
+      <div class="field check mini"><input type="checkbox" id="a_expedicao" /><label for="a_expedicao">📦 Expedição (Romaneio)</label></div>
+      <div class="field check mini"><input type="checkbox" id="a_suprimentos" /><label for="a_suprimentos">🚚 Suprimentos (Coleta em Fornecedores)</label></div>
+      <div class="field check mini"><input type="checkbox" id="a_entregas" /><label for="a_entregas">🚚 Entregas (Torre, Scorecard, Ocorrências)</label></div>
+      <div class="field check mini"><input type="checkbox" id="a_comercial" /><label for="a_comercial">📊 Comercial (Análise de Vendas)</label></div>
+      <div class="field check mini"><input type="checkbox" id="a_config" /><label for="a_config">🗂️ Configuração (Cadastro)</label></div>
+
+      <div class="perm-sec">Permissões</div>
+      <div class="field check mini"><input type="checkbox" id="p_exportar" /><label for="p_exportar">📊 Baixar relatórios em Excel</label></div>
+      <div class="field check mini"><input type="checkbox" id="p_importar" /><label for="p_importar">📥 Importar / subir arquivos</label></div>
+      <div class="field check mini"><input type="checkbox" id="p_editar" /><label for="p_editar">✏️ Editar cadastro (base de acordo)</label></div>
+    </div>
+
+    <div class="actions">
+      <button class="secondary" id="cancelarBtn">Cancelar</button>
+      <button id="salvarBtn">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/auth.js" defer></script>
+<script>
+const $ = s => document.querySelector(s);
+let EU = null;
+
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => (
+  { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+
+async function carregar() {
+  const st = await fetch('/api/auth/status').then(r => r.json()).catch(() => null);
+  EU = st && st.user;
+  if (!EU || !EU.is_admin) { $('#restrito').style.display = 'block'; return; }
+  $('#conteudo').style.display = 'block';
+  await listar();
+}
+
+async function listar() {
+  const resp = await fetch('/api/usuarios');
+  if (!resp.ok) { $('#restrito').style.display = 'block'; $('#conteudo').style.display = 'none'; return; }
+  const usuarios = await resp.json();
+  const tb = $('#tbody'); tb.innerHTML = '';
+  usuarios.forEach(u => {
+    const tr = document.createElement('tr');
+    const perfil = u.is_admin ? '<span class="badge admin">Admin</span>' : '<span class="badge user">Usuário</span>';
+    const sit = u.ativo ? 'Ativo' : '<span class="badge off">Inativo</span>';
+    const eu = EU && EU.id === u.id ? ' <span style="color:var(--muted);font-size:11px;">(você)</span>' : '';
+    tr.innerHTML = `<td><b>${escapeHtml(u.login)}</b>${eu}</td><td>${escapeHtml(u.nome || '—')}</td>`
+      + `<td>${perfil}</td><td>${sit}</td>`
+      + `<td class="act"><button class="secondary" data-edit="${u.id}">Editar</button>`
+      + `<button class="secondary" data-del="${u.id}">Excluir</button></td>`;
+    tb.appendChild(tr);
+  });
+  $('#vazio').style.display = usuarios.length <= 1 ? '' : 'none';
+  tb.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => abrir(usuarios.find(x => x.id == b.dataset.edit))));
+  tb.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => excluir(usuarios.find(x => x.id == b.dataset.del))));
+}
+
+function modalErro(msg) { const e = $('#modalErro'); e.textContent = msg || ''; e.style.display = msg ? 'block' : 'none'; }
+
+const AREA_IDS = { financeiro:'a_financeiro', expedicao:'a_expedicao', suprimentos:'a_suprimentos', entregas:'a_entregas', comercial:'a_comercial', config:'a_config' };
+
+function atualizaPermBloco() {
+  const adm = $('#mAdmin').checked;
+  $('#permBloco').classList.toggle('off', adm);
+  $('#permNota').style.display = adm ? 'block' : 'none';
+}
+
+function abrir(u) {
+  modalErro('');
+  $('#mId').value = u ? u.id : '';
+  $('#modalTitulo').textContent = u ? 'Editar usuário' : 'Novo usuário';
+  $('#mNome').value = u ? (u.nome || '') : '';
+  $('#mLogin').value = u ? u.login : '';
+  $('#mLogin').disabled = !!u;   // login não muda depois de criado
+  $('#mSenha').value = '';
+  $('#mSenhaLabel').textContent = u ? 'Nova senha (deixe em branco p/ manter)' : 'Senha (mín. 4 caracteres)';
+  $('#mAdmin').checked = u ? u.is_admin : false;
+  $('#mAtivo').checked = u ? u.ativo : true;
+  // Áreas: usuário novo nasce vendo TODAS; na edição, reflete o que ele tem ('*' = todas).
+  const areas = u ? (u.areas || []) : ['*'];
+  const todas = areas.includes('*');
+  Object.entries(AREA_IDS).forEach(([key, id]) => { $('#' + id).checked = todas || areas.includes(key); });
+  // Ações: novo nasce sem nenhuma.
+  $('#p_exportar').checked = u ? !!u.pode_exportar : false;
+  $('#p_importar').checked = u ? !!u.pode_importar : false;
+  $('#p_editar').checked = u ? !!u.pode_editar_cadastro : false;
+  atualizaPermBloco();
+  $('#modal').classList.add('open');
+}
+function fechar() { $('#modal').classList.remove('open'); }
+
+async function salvar() {
+  const id = $('#mId').value;
+  const areas = Object.entries(AREA_IDS).filter(([k, elId]) => $('#' + elId).checked).map(([k]) => k);
+  const body = {
+    nome: $('#mNome').value.trim(),
+    is_admin: $('#mAdmin').checked,
+    ativo: $('#mAtivo').checked,
+    areas,
+    pode_exportar: $('#p_exportar').checked,
+    pode_importar: $('#p_importar').checked,
+    pode_editar_cadastro: $('#p_editar').checked,
+  };
+  const senha = $('#mSenha').value;
+  const btn = $('#salvarBtn'); btn.disabled = true;
+  try {
+    let resp;
+    if (id) {
+      if (senha) body.senha = senha;
+      resp = await fetch('/api/usuarios/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    } else {
+      body.login = $('#mLogin').value.trim();
+      body.senha = senha;
+      resp = await fetch('/api/usuarios', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    }
+    if (resp.ok) { fechar(); await listar(); return; }
+    const d = await resp.json().catch(() => ({}));
+    modalErro((d && d.detail) || 'Não foi possível salvar.');
+  } catch (e) { modalErro('Falha de conexão.'); }
+  finally { btn.disabled = false; }
+}
+
+async function excluir(u) {
+  if (!u) return;
+  if (!confirm(`Excluir o usuário "${u.login}"? Ele perderá o acesso imediatamente.`)) return;
+  const resp = await fetch('/api/usuarios/' + u.id, { method: 'DELETE' });
+  if (resp.ok) { await listar(); return; }
+  const d = await resp.json().catch(() => ({}));
+  alert((d && d.detail) || 'Não foi possível excluir.');
+}
+
+$('#novoBtn').addEventListener('click', () => abrir(null));
+$('#cancelarBtn').addEventListener('click', fechar);
+$('#salvarBtn').addEventListener('click', salvar);
+$('#mAdmin').addEventListener('change', atualizaPermBloco);
+$('#modal').addEventListener('click', (e) => { if (e.target === $('#modal')) fechar(); });
+carregar();
+</script>
+</body>
+</html>

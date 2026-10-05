@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Início — LogHub</title>
+<link rel="stylesheet" href="/static/volix.css" />
+<style>
+  /* Volix (tokens + menu lateral + cabeçalho) vem de /static/volix.css.
+     Aqui só o CSS específico do Home. */
+  header p { max-width: 780px; }
+  /* Marca do CLIENTE (empresa que usa o LogHub) no topo da Home */
+  header h1.cliente-marca { font-size: 40px; font-weight: 800; letter-spacing: 9px; color: #fff; line-height: 1; }
+  header h1.cliente-marca b { color: var(--volix); font-weight: 800; }
+  header p.cliente-slogan { margin-top: 8px; text-transform: uppercase; letter-spacing: 3px; font-size: 12px; color: var(--muted); }
+  /* Tema claro: marca e valores de destaque legíveis — grafite nas letras e
+     verde técnico no realce (Verde Volix não vai em texto sobre fundo claro). */
+  :root[data-theme="light"] header h1.cliente-marca { color: #141816; }
+  :root[data-theme="light"] header h1.cliente-marca b { color: var(--accent); }
+  :root[data-theme="light"] .val.brand { color: var(--accent); }
+
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 20px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  label.inline { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  select { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 6px 8px; font-size: 12px; }
+  button, a.btn { background: var(--accent); color: #fff; border: none; padding: 9px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; text-decoration: none; display: inline-block; }
+  button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  button:hover, a.btn:hover { opacity: .9; }
+
+  /* Faixa de evolução (dois sparklines grandes no topo) */
+  .spark-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  @media (max-width: 820px) { .spark-row { grid-template-columns: 1fr; } }
+  .spark { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; text-decoration: none; color: inherit; display: block; transition: border-color .12s, transform .06s; }
+  .spark:hover { border-color: var(--muted); }
+  .spark:active { transform: translateY(1px); }
+  .spark .top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .spark .ttl { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .spark .hero-val { display: flex; align-items: baseline; gap: 8px; }
+  .spark .big { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+  .spark .big small { font-size: 15px; font-weight: 600; color: var(--muted); }
+  .spark .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .spark svg { width: 100%; height: 60px; display: block; margin-top: 10px; }
+  .trend { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .trend.ok { color: var(--ok); } .trend.bad { color: var(--bad); } .trend.flat { color: var(--muted); }
+
+  /* Seções de cards — cada uma com uma cor para escanear rápido */
+  .sec-title { display: flex; align-items: center; gap: 10px; margin: 26px 0 12px; }
+  .sec-title h2 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .sec-title .bar { width: 4px; height: 15px; border-radius: 3px; background: var(--accent); }
+  .sec-title a.more { margin-left: auto; font-size: 12px; color: var(--muted); text-decoration: none; }
+  .sec-title a.more:hover { color: var(--text); }
+  .bar.exp { background: #a855f7; } .bar.ent { background: var(--ok); }
+  .bar.fin { background: var(--accent); } .bar.conf { background: var(--warn); }
+  .bar.com { background: var(--volix); }
+  .card.accent { border-top: 3px solid var(--accent); }
+  .card.accent.exp { border-top-color: #a855f7; } .card.accent.ent { border-top-color: var(--ok); }
+  .card.accent.fin { border-top-color: var(--accent); } .card.accent.conf { border-top-color: var(--warn); }
+  .card.accent.com { border-top-color: var(--volix); }
+  .val.brand { color: var(--volix); }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+  a.card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; text-decoration: none; color: inherit; display: block; position: relative; transition: border-color .12s, transform .06s, box-shadow .12s; }
+  a.card:hover { border-color: var(--muted); box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+  a.card:active { transform: translateY(1px); }
+  a.card::after { content: '→'; position: absolute; top: 14px; right: 15px; color: var(--muted); font-size: 14px; opacity: .5; transition: opacity .12s, transform .12s; }
+  a.card:hover::after { opacity: 1; transform: translateX(2px); }
+  .card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; padding-right: 16px; }
+  .card .val { font-size: 30px; font-weight: 800; margin-top: 6px; font-variant-numeric: tabular-nums; line-height: 1.05; }
+  .card .val small { font-size: 16px; font-weight: 600; color: var(--muted); }
+  .card .sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .val.ok { color: var(--ok); } .val.warn { color: var(--warn); } .val.bad { color: var(--bad); }
+  .chip { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-top: 6px; text-transform: uppercase; letter-spacing: .03em; }
+  .chip.ok { background: var(--ok-bg); color: var(--ok); }
+  .chip.warn { background: var(--warn-bg); color: var(--warn); }
+  .chip.bad { background: var(--bad-bg); color: var(--bad); }
+  .chip.neutral { background: var(--spot-bg); color: var(--spot); }
+
+  #loadMsg { color: var(--muted); font-size: 13px; padding: 40px 0; text-align: center; }
+  #errMsg { display: none; color: var(--bad); font-size: 13px; padding: 14px 16px; background: var(--bad-bg); border: 1px solid var(--bad); border-radius: 8px; margin-bottom: 16px; }
+  #tip { position: fixed; z-index: 80; display: none; background: #0b0f17; border: 1px solid var(--border); border-radius: 6px; padding: 6px 9px; font-size: 12px; pointer-events: none; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
+  #tip b { color: #fff; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <img class="brand-iso" width="42" height="42" src="/static/volix-selo-grafite.svg" alt="Volix">
+    <div class="volix">Log<b>H</b>ub</div>
+    <div class="glow"></div>
+    <div class="tag">Sua logística <b>num só lugar</b></div>
+  </div>
+  <nav class="side-nav">
+    <a href="/home" class="active">🏠 Início</a>
+    <div class="sec">Financeiro</div>
+    <a href="/audit">📋 Auditoria de CTe</a>
+    <a href="/percent-nf">💰 Frete sobre Faturamento</a>
+    <a href="/conferencia">🧾 Conferência de Fatura</a>
+    <div class="sec">Suprimentos</div>
+    <a href="/coletas">🚚 Coleta em Fornecedores</a>
+    <div class="sec">Expedição</div>
+    <a href="/romaneio">📦 Romaneio de Expedição</a>
+    <div class="sec">Entregas</div>
+    <a href="/tracking">🗼 Torre de Controle</a>
+    <a href="/relatorio-dia">📨 Relatório do Dia</a>
+    <a href="/scorecard">🏆 Scorecard de Desempenho</a>
+    <div class="sec">Comercial</div>    <a href="/vendas">📈 Análise de Vendas</a>
+    <div class="sec">Configuração</div>
+    <a href="/cadastro">🗂️ Cadastro de Tabelas</a>
+  </nav>
+</aside>
+
+<header>
+  <img class="vmark vmark-dark" width="40" height="40" src="/static/volix-selo-grafite.svg" alt="Volix"><img class="vmark vmark-light" width="40" height="40" src="/static/volix-selo-principal.svg" alt="Volix">
+  <h1 class="cliente-marca">VOL<b>I</b>X</h1>
+  <p class="cliente-slogan">Tecnologia que transforma</p>
+</header>
+
+<main>
+
+  <div class="panel">
+    <div class="row" style="justify-content: space-between;">
+      <div class="row">
+        <label class="inline">Período
+          <select id="mesFilter"><option value="">Tudo</option></select>
+        </label>
+        <button class="secondary" id="refreshBtn" type="button">Atualizar</button>
+      </div>
+      <span class="sub" id="stamp" style="font-size:11px;color:var(--muted);"></span>
+    </div>
+  </div>
+
+  <div id="errMsg"></div>
+  <div id="loadMsg">Carregando o painel…</div>
+
+  <div id="content" style="display:none;">
+
+    <!-- Evolução (sparklines grandes) -->
+    <div class="spark-row">
+      <a class="spark" href="/scorecard" id="sparkOtd">
+        <div class="top">
+          <span class="ttl">OTD — no prazo</span>
+          <span class="big" id="otdBig">—</span>
+        </div>
+        <div class="sub" id="otdSub"></div>
+        <svg id="otdSpark" viewBox="0 0 300 60" preserveAspectRatio="none"></svg>
+      </a>
+      <a class="spark" href="/percent-nf" id="sparkNf">
+        <div class="top">
+          <span class="ttl">%NF — frete sobre faturamento</span>
+          <span class="big" id="nfBig">—</span>
+        </div>
+        <div class="sub" id="nfSub"></div>
+        <svg id="nfSpark" viewBox="0 0 300 60" preserveAspectRatio="none"></svg>
+      </a>
+    </div>
+
+    <!-- Ordem = ciclo do frete: comercial → expedição → entrega → custo → conferência -->
+
+    <!-- Comercial -->
+    <div class="sec-title">
+      <span class="bar com"></span><h2>Comercial</h2>
+      <a class="more" href="/vendas">Análise de Vendas →</a>
+    </div>
+    <div class="cards" id="cardsCom"></div>
+
+    <!-- Expedição -->
+    <div class="sec-title">
+      <span class="bar exp"></span><h2>Expedição</h2>
+      <a class="more" href="/romaneio">Romaneio de Expedição →</a>
+    </div>
+    <div class="cards" id="cardsExp"></div>
+
+    <!-- Entregas -->
+    <div class="sec-title">
+      <span class="bar ent"></span><h2>Entregas</h2>
+      <a class="more" href="/scorecard">Scorecard de Desempenho →</a>
+    </div>
+    <div class="cards" id="cardsEnt"></div>
+
+    <!-- Financeiro -->
+    <div class="sec-title">
+      <span class="bar fin"></span><h2>Financeiro</h2>
+      <a class="more" href="/audit">Auditoria de CTe →</a>
+    </div>
+    <div class="cards" id="cardsFin"></div>
+
+    <!-- Conferência -->
+    <div class="sec-title">
+      <span class="bar conf"></span><h2>Conferência de Fatura</h2>
+      <a class="more" href="/conferencia">Conferência de Fatura →</a>
+    </div>
+    <div class="cards" id="cardsConf"></div>
+
+  </div>
+
+</main>
+
+<div id="tip"></div>
+<script src="/static/auth.js" defer></script>
+<script>
+"use strict";
+
+// ── Helpers de formatação (pt-BR) ─────────────────────────────────────────────
+const nf0 = new Intl.NumberFormat('pt-BR');
+function money(v) {
+  return (v == null ? 0 : v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+function moneyC(v) {
+  v = v || 0;
+  if (Math.abs(v) >= 1e6) return 'R$ ' + (v / 1e6).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + 'M';
+  if (Math.abs(v) >= 1e3) return 'R$ ' + (v / 1e3).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + 'k';
+  return money(v);
+}
+function pct(v) { return v == null ? '—' : v.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%'; }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+// Classe de status por meta (OTD: maior=melhor; %NF: menor=melhor).
+function classeOtd(v, meta, atencao) {
+  if (v == null) return 'neutral';
+  if (v >= meta) return 'ok';
+  if (v >= atencao) return 'warn';
+  return 'bad';
+}
+function classeStatus(s) {
+  return s === 'verde' ? 'ok' : s === 'amarelo' ? 'warn' : s === 'vermelho' ? 'bad' : 'neutral';
+}
+
+// ── Sparkline hand-rolled (SVG) ───────────────────────────────────────────────
+function sparkline(svgId, serie, corClasse) {
+  const svg = document.getElementById(svgId);
+  const W = 300, H = 60, pad = 6;
+  const pts = serie.filter(p => p.valor != null);
+  if (pts.length === 0) { svg.innerHTML = `<text x="150" y="34" fill="#8b93a7" font-size="11" text-anchor="middle">sem histórico</text>`; return; }
+  const vals = pts.map(p => p.valor);
+  let mn = Math.min(...vals), mx = Math.max(...vals);
+  if (mn === mx) { mn -= 1; mx += 1; }
+  const x = i => pad + (pts.length === 1 ? (W - 2 * pad) / 2 : i * (W - 2 * pad) / (pts.length - 1));
+  const y = v => H - pad - (v - mn) / (mx - mn) * (H - 2 * pad);
+  const cor = corClasse === 'bad' ? 'var(--bad)' : corClasse === 'warn' ? 'var(--warn)' : 'var(--ok)';
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.valor).toFixed(1)}`).join(' ');
+  const area = `${line} L${x(pts.length - 1).toFixed(1)},${H - pad} L${x(0).toFixed(1)},${H - pad} Z`;
+  let dots = '';
+  pts.forEach((p, i) => {
+    dots += `<circle cx="${x(i).toFixed(1)}" cy="${y(p.valor).toFixed(1)}" r="2.6" fill="${cor}" class="spk-dot" data-m="${esc(p.mes)}" data-v="${p.valor}"/>`;
+  });
+  svg.innerHTML =
+    `<defs><linearGradient id="g_${svgId}" x1="0" y1="0" x2="0" y2="1">
+       <stop offset="0" stop-color="${cor}" stop-opacity=".22"/>
+       <stop offset="1" stop-color="${cor}" stop-opacity="0"/>
+     </linearGradient></defs>
+     <path d="${area}" fill="url(#g_${svgId})"/>
+     <path d="${line}" fill="none" stroke="${cor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+     ${dots}`;
+}
+
+// Tooltip nos pontos dos sparklines.
+const tip = document.getElementById('tip');
+document.addEventListener('mouseover', e => {
+  const d = e.target.closest && e.target.closest('.spk-dot');
+  if (!d) return;
+  tip.innerHTML = `<b>${esc(d.dataset.m)}</b> · ${Number(d.dataset.v).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
+  tip.style.display = 'block';
+});
+document.addEventListener('mousemove', e => {
+  if (tip.style.display === 'block') { tip.style.left = (e.clientX + 12) + 'px'; tip.style.top = (e.clientY + 12) + 'px'; }
+});
+document.addEventListener('mouseout', e => {
+  if (e.target.closest && e.target.closest('.spk-dot')) tip.style.display = 'none';
+});
+
+// ── Montagem de cards ─────────────────────────────────────────────────────────
+// `accent` é o slug da seção ('exp'/'ent'/'fin'/'conf') no 1º card, ou vazio.
+function card(href, label, valHtml, valClasse, sub, chip, accent) {
+  return `<a class="card${accent ? ' accent ' + accent : ''}" href="${href}">
+    <div class="label">${esc(label)}</div>
+    <div class="val${valClasse ? ' ' + valClasse : ''}">${valHtml}</div>
+    ${sub ? `<div class="sub">${sub}</div>` : ''}
+    ${chip ? `<span class="chip ${chip.cls}">${esc(chip.txt)}</span>` : ''}
+  </a>`;
+}
+
+// 'YYYY-MM' -> 'mmm/AA' (ex.: '2026-09' -> 'set/26').
+const _MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+function mesCurto(m) {
+  const [a, mm] = String(m || '').split('-');
+  return (_MESES[(+mm) - 1] || m) + '/' + (a ? a.slice(2) : '');
+}
+
+// Tendência mês a mês: variação do ÚLTIMO mês vs. o anterior, SEMPRE rotulada
+// com os dois meses — nunca fica grudada no número-herói (que é o agregado do
+// período), para não dar a leitura falsa de que o agregado "caiu X pp".
+// `bomSubir`: OTD subir é bom (verde); %NF subir é ruim (vermelho).
+function trend(serie, bomSubir) {
+  const pts = serie.filter(p => p.valor != null);
+  if (pts.length < 2) return '';
+  const ant = pts[pts.length - 2], atual = pts[pts.length - 1];
+  const d = atual.valor - ant.valor;
+  const label = `${mesCurto(ant.mes)}→${mesCurto(atual.mes)}`;
+  if (Math.abs(d) < 0.05) return `<span class="trend flat">${label}: ▬ estável</span>`;
+  const subiu = d > 0;
+  const bom = subiu === bomSubir;
+  const val = Math.abs(d).toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+  return `<span class="trend ${bom ? 'ok' : 'bad'}">${label}: ${subiu ? '▲' : '▼'} ${val} pp</span>`;
+}
+
+function render(d) {
+  const f = d.financeiro, e = d.entregas, c = d.conferencia, x = d.expedicao, cm = d.comercial || {};
+
+  // Sparklines + valores hero
+  const otdCls = classeOtd(e.otd_pct, e.meta, e.atencao);
+  document.getElementById('otdBig').innerHTML = e.otd_pct == null ? '—' : pct(e.otd_pct);
+  document.getElementById('otdBig').className = 'big val ' + otdCls;
+  const otdTr = trend(d.evolucao.otd, true);   // subir OTD = bom
+  document.getElementById('otdSub').innerHTML =
+    `Meta ${e.meta}% · ${nf0.format(e.entregues)} entregues no período` + (otdTr ? ` · ${otdTr}` : '');
+  sparkline('otdSpark', d.evolucao.otd, otdCls);
+
+  const nfCls = classeStatus(f.nf_status);
+  document.getElementById('nfBig').innerHTML = f.pct_nf == null ? '—' : pct(f.pct_nf);
+  document.getElementById('nfBig').className = 'big val ' + nfCls;
+  const nfTr = trend(d.evolucao.nf, false);    // subir %NF = ruim
+  document.getElementById('nfSub').innerHTML = (f.nf_meta != null
+    ? `Meta mix ${pct(f.nf_meta)} · frete ${moneyC(f.frete_total)} sobre NF ${moneyC(f.valor_nf)}`
+    : 'sem base no período') + (nfTr ? ` · ${nfTr}` : '');
+  sparkline('nfSpark', d.evolucao.nf, nfCls);
+
+  // Financeiro
+  const divCls = f.pct_divergente >= 20 ? 'bad' : f.pct_divergente >= 10 ? 'warn' : 'ok';
+  document.getElementById('cardsFin').innerHTML =
+    card('/audit', 'CTes auditados', nf0.format(f.total_ctes), '', 'no período selecionado', null, 'fin') +
+    card('/audit', 'CTes divergentes', nf0.format(f.ctes_divergente), divCls,
+         `${pct(f.pct_divergente)} do total`, null, false) +
+    card('/audit', 'Valor em divergência', moneyC(f.valor_divergencia_total),
+         f.valor_divergencia_total > 0 ? 'bad' : 'ok', 'diferença acumulada vs. tabela', null, false) +
+    card('/percent-nf', '%NF sobre faturamento', f.pct_nf == null ? '—' : pct(f.pct_nf),
+         classeStatus(f.nf_status), f.nf_meta != null ? `meta mix ${pct(f.nf_meta)}` : '', null, false) +
+    card('/percent-nf', 'Frete total', moneyC(f.frete_total), '',
+         `sobre NF de ${moneyC(f.valor_nf)}`, null, false);
+
+  // Entregas
+  document.getElementById('cardsEnt').innerHTML =
+    card('/scorecard', 'OTD — no prazo', e.otd_pct == null ? '—' : pct(e.otd_pct), otdCls,
+         `meta ${e.meta}%`, null, 'ent') +
+    card('/tracking', 'Em trânsito', nf0.format(e.em_transito), e.em_transito ? 'warn' : '',
+         'entregas em andamento', null, false) +
+    card('/tracking', 'Atrasadas em aberto', nf0.format(e.atrasadas_abertas),
+         e.atrasadas_abertas ? 'bad' : 'ok', 'passaram do prazo, sem baixa', null, false) +
+    card('/tracking', 'Devolvidas', nf0.format(e.devolvidas), e.devolvidas ? 'warn' : '',
+         'no período', null, false) +
+    card('/tracking', 'Ocorrências sem vínculo', nf0.format(e.ocorrencias_sem_vinculo),
+         e.ocorrencias_sem_vinculo ? 'warn' : 'ok', 'OCOREN ainda sem CTe', null, false);
+
+  // Conferência
+  const cvazio = c.faturas === 0;
+  document.getElementById('cardsConf').innerHTML =
+    card('/conferencia', 'Faturas conferidas', nf0.format(c.faturas), '',
+         cvazio ? 'nenhuma fatura ainda' : 'no total', null, 'conf') +
+    card('/conferencia', 'Liberado p/ pagamento', moneyC(c.valor_liberado), c.valor_liberado ? 'ok' : '',
+         'linhas que conferem', null, false) +
+    card('/conferencia', 'Em revisão', moneyC(c.valor_em_revisao), c.valor_em_revisao ? 'warn' : '',
+         'aguardando análise', null, false) +
+    card('/conferencia', 'Valor contestável', moneyC(c.valor_contestavel), c.valor_contestavel ? 'bad' : 'ok',
+         'cobrado acima do CTe/tabela', null, false);
+
+  // Comercial (Análise de Vendas / Olist)
+  document.getElementById('cardsCom').innerHTML =
+    card('/vendas', 'Faturamento líquido', moneyC(cm.faturamento_liquido != null ? cm.faturamento_liquido : cm.faturamento_total), cm.faturamento_liquido ? 'ok' : '',
+         `bruto ${moneyC(cm.faturamento_total)}${cm.devolucoes ? ' · −' + moneyC(cm.devolucoes) + ' devol.' : ''}`, null, 'com') +
+    card('/vendas', 'Ticket médio', moneyC(cm.ticket_medio), '',
+         'por pedido faturado', null, false) +
+    card('/vendas', 'Canal líder',
+         cm.canal_lider ? `<span style="font-size:19px">${esc(cm.canal_lider)}</span>` : '—',
+         cm.canal_lider ? 'brand' : '',
+         cm.canal_lider ? `${moneyC(cm.canal_lider_fat)} · ${pct(cm.canal_lider_part)} do total` : 'sem vendas no período',
+         null, false) +
+    card('/vendas', 'Pedidos', nf0.format(cm.total_pedidos || 0), '',
+         `${nf0.format(cm.cancelados || 0)} cancelado(s) · ${nf0.format(cm.aguardando || 0)} aguardando`, null, false);
+
+  // Expedição
+  const sit = x.por_situacao || {};
+  document.getElementById('cardsExp').innerHTML =
+    card('/romaneio', 'Romaneios no período', nf0.format(x.romaneios), '',
+         `${nf0.format(sit.aberto || 0)} aberto(s) · ${nf0.format(sit.expedido || 0)} expedido(s)`, null, 'exp') +
+    card('/romaneio', 'NFs expedidas', nf0.format(x.nfs_expedidas), '',
+         'em romaneios do período', null, false) +
+    card('/romaneio', 'NFs na fila', nf0.format(x.nfs_na_fila), x.nfs_na_fila ? 'warn' : 'ok',
+         `${nf0.format(x.grupos_na_fila)} transportadora(s) aguardando`, null, false);
+
+  document.getElementById('stamp').textContent = 'Atualizado ' + new Date().toLocaleString('pt-BR');
+}
+
+// ── Carregamento ──────────────────────────────────────────────────────────────
+const mesSel = document.getElementById('mesFilter');
+const loadMsg = document.getElementById('loadMsg');
+const errMsg = document.getElementById('errMsg');
+const content = document.getElementById('content');
+
+async function loadMeses() {
+  try {
+    const r = await fetch('/api/home/meses');
+    if (!r.ok) return;
+    const meses = await r.json();
+    for (const m of meses) {
+      const o = document.createElement('option');
+      o.value = m; o.textContent = m;
+      mesSel.appendChild(o);
+    }
+  } catch (_) { /* filtro de mês é opcional; segue com "Tudo" */ }
+}
+
+async function load() {
+  errMsg.style.display = 'none';
+  loadMsg.style.display = 'block';
+  try {
+    const url = '/api/home' + (mesSel.value ? '?mes=' + encodeURIComponent(mesSel.value) : '');
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    render(d);
+    content.style.display = 'block';
+    loadMsg.style.display = 'none';
+  } catch (err) {
+    loadMsg.style.display = 'none';
+    errMsg.textContent = 'Não foi possível carregar o painel. Verifique se o servidor está no ar e tente Atualizar. (' + err.message + ')';
+    errMsg.style.display = 'block';
+  }
+}
+
+document.getElementById('refreshBtn').addEventListener('click', load);
+mesSel.addEventListener('change', load);
+
+(async () => { await loadMeses(); await load(); })();
+</script>
+</body>
+</html>

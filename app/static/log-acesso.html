@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Log de Acesso — LogHub</title>
+<link rel="stylesheet" href="/static/volix.css" />
+<style>
+  main { max-width: 1560px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 20px; }
+  .filtros { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 4px; }
+  .fcell { display: flex; flex-direction: column; gap: 5px; }
+  .fcell label { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+  .fcell input, .fcell select { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 8px 10px; font-size: 13px; min-width: 130px; }
+  button { background: var(--volix); color: #0a0d12; border: none; padding: 9px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 700; }
+  button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); font-weight: 400; }
+  .kpis { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+  .kpi { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; min-width: 120px; }
+  .kpi .n { font-size: 22px; font-weight: 700; }
+  .kpi .l { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+  tbody tr:hover { background: rgba(255,255,255,.02); }
+  td.ts { white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }
+  td.detalhe { color: var(--muted); font-size: 12.5px; }
+  .ev { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .ev.ok { background: rgba(139,195,74,.15); color: var(--volix); }
+  .ev.bad { background: var(--bad-bg); color: var(--bad); }
+  .ev.warn { background: var(--warn-bg); color: var(--warn); }
+  .ev.info { background: var(--spot-bg); color: var(--spot); }
+  .ev.neutral { background: rgba(255,255,255,.06); color: var(--text); }
+  .empty { color: var(--muted); font-size: 13px; padding: 24px 0; text-align: center; }
+  .restrito { color: var(--warn); background: var(--warn-bg); border-radius: 8px; padding: 16px; font-size: 13px; }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="brand">
+    <img class="brand-iso" width="42" height="42" src="/static/volix-selo-grafite.svg" alt="Volix">
+    <div class="volix">Log<b>H</b>ub</div>
+    <div class="glow"></div>
+    <div class="tag">Sua logística <b>num só lugar</b></div>
+  </div>
+  <nav class="side-nav">
+    <a href="/home">🏠 Início</a>
+    <div class="sec">Financeiro</div>
+    <a href="/audit">📋 Auditoria de CTe</a>
+    <a href="/percent-nf">💰 Frete sobre Faturamento</a>
+    <div class="sec">Suprimentos</div>
+    <a href="/coletas">🚚 Coleta em Fornecedores</a>
+    <div class="sec">Expedição</div>
+    <a href="/romaneio">📦 Romaneio de Expedição</a>
+    <div class="sec">Entregas</div>
+    <a href="/tracking">🗼 Torre de Controle</a>
+    <a href="/relatorio-dia">📨 Relatório do Dia</a>
+    <a href="/scorecard">🏆 Scorecard de Desempenho</a>
+    <div class="sec">Comercial</div>    <a href="/vendas">📈 Análise de Vendas</a>
+    <div class="sec">Configuração</div>
+    <a href="/cadastro">🗂️ Cadastro de Tabelas</a>
+  </nav>
+</aside>
+
+<header>
+  <h1>Log de Acesso</h1>
+  <p>Auditoria de segurança: quem entrou, quando e quais ações sensíveis foram executadas (edição de cadastro, importações, exportações e acessos negados).</p>
+</header>
+
+<main>
+  <div id="restrito" class="restrito" style="display:none;">
+    Acesso restrito: apenas administradores podem consultar o log de acesso.
+  </div>
+
+  <div id="conteudo" style="display:none;">
+    <div class="panel">
+      <div class="filtros">
+        <div class="fcell"><label for="fEvento">Evento</label>
+          <select id="fEvento"><option value="">Todos</option></select></div>
+        <div class="fcell"><label for="fUsuario">Usuário</label>
+          <select id="fUsuario"><option value="">Todos</option></select></div>
+        <div class="fcell"><label for="fBusca">Buscar</label>
+          <input id="fBusca" placeholder="login, nome ou detalhe" /></div>
+        <div class="fcell"><label for="fDesde">De</label><input id="fDesde" type="date" /></div>
+        <div class="fcell"><label for="fAte">Até</label><input id="fAte" type="date" /></div>
+        <button id="aplicarBtn">Aplicar</button>
+        <button class="secondary" id="limparBtn">Limpar</button>
+        <button class="secondary" id="csvBtn">⬇ CSV</button>
+      </div>
+    </div>
+
+    <div class="kpis" id="kpis"></div>
+
+    <div class="panel">
+      <div class="toolbar"><h2 style="margin:0;font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);">Eventos</h2>
+        <span id="contagem" style="font-size:12px;color:var(--muted);"></span></div>
+      <table>
+        <thead><tr><th>Data / hora</th><th>Evento</th><th>Usuário</th><th>IP</th><th>Detalhe</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div id="carregando" class="empty" style="display:none;" aria-live="polite">Carregando eventos…</div>
+      <div id="vazio" class="empty" style="display:none;">Nenhum evento para os filtros selecionados.</div>
+      <div id="erro" class="empty" style="display:none;">
+        Falha ao carregar o log. <button type="button" class="secondary" id="retryBtn">Tentar de novo</button>
+      </div>
+      <div id="pager"></div>
+    </div>
+  </div>
+</main>
+
+<script src="/static/auth.js" defer></script>
+<script src="/static/pager.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+let EVENTOS = {};
+let ITENS = [];
+let OFFSET = 0;
+let LIMIT = 100;
+let TOTAL = 0;
+
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => (
+  { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+
+// Classe visual por evento.
+const EV_CLASSE = {
+  LOGIN_OK: 'ok', SETUP_ADMIN: 'ok', USUARIO_CRIADO: 'info',
+  LOGIN_FALHA: 'bad', ACESSO_NEGADO: 'bad', USUARIO_EXCLUIDO: 'bad',
+  USUARIO_ALTERADO: 'warn', CADASTRO_EDITADO: 'warn',
+  IMPORTACAO: 'info', EXPORTACAO: 'info', LOGOUT: 'neutral',
+};
+
+function fmtTs(ts) {
+  if (!ts) return '—';
+  const [d, h] = String(ts).split('T');
+  if (!d) return ts;
+  const [y, m, dia] = d.split('-');
+  return `${dia}/${m}/${y}` + (h ? ' ' + h.slice(0, 5) : '');
+}
+
+async function carregar() {
+  const st = await fetch('/api/auth/status').then(r => r.json()).catch(() => null);
+  const eu = st && st.user;
+  if (!eu || !eu.is_admin) { $('#restrito').style.display = 'block'; return; }
+  $('#conteudo').style.display = 'block';
+  await listar();
+}
+
+function params() {
+  const p = new URLSearchParams();
+  const ev = $('#fEvento').value; if (ev) p.set('evento', ev);
+  const us = $('#fUsuario').value; if (us) p.set('usuario_id', us);
+  const b = $('#fBusca').value.trim(); if (b) p.set('busca', b);
+  const de = $('#fDesde').value; if (de) p.set('desde', de);
+  const ate = $('#fAte').value; if (ate) p.set('ate', ate);
+  p.set('limit', LIMIT);
+  p.set('offset', OFFSET);
+  return p;
+}
+
+// Trocar filtro/busca → volta para a 1ª página; navegar/trocar tamanho preserva os filtros.
+function aplicar() { OFFSET = 0; listar(); }
+
+async function listar() {
+  $('#erro').style.display = 'none';
+  $('#vazio').style.display = 'none';
+  $('#carregando').style.display = '';
+  let data;
+  try {
+    const resp = await fetch('/api/log-acesso?' + params().toString());
+    if (resp.status === 401 || resp.status === 403) {
+      $('#restrito').style.display = 'block'; $('#conteudo').style.display = 'none'; return;
+    }
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    data = await resp.json();
+  } catch (e) {
+    $('#carregando').style.display = 'none';
+    $('#tbody').innerHTML = ''; $('#pager').innerHTML = '';
+    $('#erro').style.display = ''; $('#contagem').textContent = '';
+    return;
+  }
+  $('#carregando').style.display = 'none';
+
+  // Filtros populados uma vez.
+  if (Object.keys(EVENTOS).length === 0) {
+    EVENTOS = data.eventos || {};
+    const selE = $('#fEvento');
+    Object.entries(EVENTOS).forEach(([k, label]) => {
+      const o = document.createElement('option'); o.value = k; o.textContent = label; selE.appendChild(o);
+    });
+    const selU = $('#fUsuario');
+    (data.usuarios || []).forEach(u => {
+      const o = document.createElement('option'); o.value = u.usuario_id;
+      o.textContent = (u.nome || u.login) + ' (' + u.login + ')'; selU.appendChild(o);
+    });
+  }
+
+  ITENS = data.itens || [];
+  // Backend antigo (sem total/kpis) → deriva do que veio, até o servidor reiniciar.
+  TOTAL = (data.total != null) ? data.total : ITENS.length;
+  renderKpis(data.kpis || kpisDe(ITENS));
+  const tb = $('#tbody'); tb.innerHTML = '';
+  ITENS.forEach(it => {
+    const cls = EV_CLASSE[it.evento] || 'neutral';
+    const quem = it.login ? escapeHtml((it.nome ? it.nome + ' · ' : '') + it.login) : '<span style="color:var(--muted)">—</span>';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="ts">${fmtTs(it.ts)}</td>`
+      + `<td><span class="ev ${cls}">${escapeHtml(it.evento_label || it.evento)}</span></td>`
+      + `<td>${quem}</td>`
+      + `<td class="ts">${escapeHtml(it.ip || '—')}</td>`
+      + `<td class="detalhe">${escapeHtml(it.detalhe || '')}</td>`;
+    tb.appendChild(tr);
+  });
+  $('#vazio').style.display = (TOTAL === 0) ? '' : 'none';
+  $('#contagem').textContent = TOTAL.toLocaleString('pt-BR') + ' evento(s)';
+  Pager.render($('#pager'), {
+    offset: OFFSET, limit: LIMIT, total: TOTAL, pageSizes: [50, 100, 200],
+    onGo: (novo) => { OFFSET = novo; listar(); },
+    onLimit: (novo) => { LIMIT = novo; OFFSET = 0; listar(); },
+  });
+}
+
+// Fallback: conta por evento a partir dos itens (só enquanto o backend antigo
+// não manda os KPIs agregados). Só cobre a página, não o conjunto inteiro.
+function kpisDe(itens) {
+  const c = {};
+  itens.forEach(i => { c[i.evento] = (c[i.evento] || 0) + 1; });
+  return c;
+}
+
+function renderKpis(kpis) {
+  const cards = [
+    { n: kpis.LOGIN_OK || 0, l: 'Logins' },
+    { n: kpis.LOGIN_FALHA || 0, l: 'Logins falhos', bad: (kpis.LOGIN_FALHA || 0) > 0 },
+    { n: kpis.ACESSO_NEGADO || 0, l: 'Acessos negados', bad: (kpis.ACESSO_NEGADO || 0) > 0 },
+    { n: kpis.CADASTRO_EDITADO || 0, l: 'Edições de cadastro' },
+  ];
+  $('#kpis').innerHTML = cards.map(k =>
+    `<div class="kpi"><div class="n" style="${k.bad ? 'color:var(--bad)' : ''}">${k.n}</div><div class="l">${k.l}</div></div>`
+  ).join('');
+}
+
+async function baixarCsv() {
+  // CSV do conjunto filtrado inteiro (não só a página exibida).
+  const p = params(); p.set('limit', '5000'); p.set('offset', '0');
+  let itens = ITENS;
+  try {
+    const r = await fetch('/api/log-acesso?' + p.toString());
+    if (r.ok) itens = (await r.json()).itens || ITENS;
+  } catch (e) { /* cai para a página já carregada */ }
+  const cab = ['Data/hora', 'Evento', 'Login', 'Nome', 'IP', 'Detalhe'];
+  const linhas = itens.map(i => [fmtTs(i.ts), i.evento_label || i.evento, i.login || '', i.nome || '', i.ip || '', i.detalhe || '']);
+  const esc = v => '"' + String(v).replace(/"/g, '""') + '"';
+  const csv = '﻿' + [cab, ...linhas].map(r => r.map(esc).join(';')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'log-acesso.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+$('#aplicarBtn').addEventListener('click', aplicar);
+$('#limparBtn').addEventListener('click', () => {
+  $('#fEvento').value = ''; $('#fUsuario').value = ''; $('#fBusca').value = '';
+  $('#fDesde').value = ''; $('#fAte').value = ''; aplicar();
+});
+$('#csvBtn').addEventListener('click', baixarCsv);
+$('#retryBtn').addEventListener('click', listar);
+$('#fBusca').addEventListener('keydown', e => { if (e.key === 'Enter') aplicar(); });
+carregar();
+</script>
+</body>
+</html>

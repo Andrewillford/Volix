@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Relatório do Dia — LogHub</title>
+<link rel="stylesheet" href="/static/volix.css" />
+<style>
+  header p { max-width: 720px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 20px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  label.inline { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  select { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 6px 8px; font-size: 12px; }
+  button { background: var(--accent); color: #fff; border: none; padding: 9px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  button:hover { opacity: .9; }
+  button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  /* O relatório vem com estilo próprio (claro) — cartão branco para leitura e cópia. */
+  #reportCard { background: #fff; border-radius: 10px; padding: 18px 20px; overflow-x: auto; }
+  .empty { color: var(--muted); font-size: 13px; padding: 30px 0; text-align: center; }
+  #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #0b0f17; border: 1px solid var(--border); color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 13px; display: none; z-index: 90; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
+  /* Modal de cópia manual (fallback quando o navegador bloqueia a cópia). */
+  .copy-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+  .copy-box { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; width: 100%; max-width: 440px; }
+  .copy-box p { margin: 0 0 12px; font-size: 13px; color: var(--text); }
+  .copy-box textarea { width: 100%; height: 260px; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 12px; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12px; resize: vertical; }
+  .copy-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
+  /* Alertas de entrega (vindos da Torre) */
+  .alertas-panel { border-color: var(--warn); }
+  .alertas-panel > h2 { color: var(--warn); margin: 0 0 4px; }
+  .alertas-h { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); margin: 16px 0 8px; }
+  .alertas-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .alertas-tbl th, .alertas-tbl td { padding: 5px 9px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+  .alertas-tbl th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; }
+  .alertas-tbl th.num, .alertas-tbl td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .cob-row { display: grid; grid-template-columns: 160px 1fr 54px 60px; align-items: center; gap: 10px; padding: 3px 0; font-size: 12.5px; }
+  .cob-nome { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cob-bar { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; height: 12px; overflow: hidden; }
+  .cob-fill { display: block; height: 100%; }
+  .cob-val { text-align: right; font-variant-numeric: tabular-nums; }
+  .cob-n { text-align: right; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <img class="brand-iso" width="42" height="42" src="/static/volix-selo-grafite.svg" alt="Volix">
+    <div class="volix">Log<b>H</b>ub</div>
+    <div class="glow"></div>
+    <div class="tag">Sua logística <b>num só lugar</b></div>
+  </div>
+  <nav class="side-nav">
+    <a href="/home">🏠 Início</a>
+    <div class="sec">Financeiro</div>
+    <a href="/audit">📋 Auditoria de CTe</a>
+    <a href="/percent-nf">💰 Frete sobre Faturamento</a>
+    <a href="/conferencia">🧾 Conferência de Fatura</a>
+    <div class="sec">Suprimentos</div>
+    <a href="/coletas">🚚 Coleta em Fornecedores</a>
+    <div class="sec">Expedição</div>
+    <a href="/romaneio">📦 Romaneio de Expedição</a>
+    <div class="sec">Entregas</div>
+    <a href="/tracking">🗼 Torre de Controle</a>
+    <a href="/relatorio-dia" class="active">📨 Relatório do Dia</a>
+    <a href="/scorecard">🏆 Scorecard de Desempenho</a>
+    <div class="sec">Comercial</div>    <a href="/vendas">📈 Análise de Vendas</a>
+    <div class="sec">Configuração</div>
+    <a href="/cadastro">🗂️ Cadastro de Tabelas</a>
+  </nav>
+</aside>
+
+<header>
+  <img class="vmark vmark-dark" width="40" height="40" src="/static/volix-selo-grafite.svg" alt="Volix"><img class="vmark vmark-light" width="40" height="40" src="/static/volix-selo-principal.svg" alt="Volix">
+  <h1>Relatório do Dia</h1>
+  <p>Análise diária por transportadora: o que está vencido, o que vence hoje e o que vence em breve, com o desempenho de cada uma. Prévia do relatório que será enviado automaticamente às 8h.</p>
+</header>
+
+<main>
+  <div class="panel">
+    <div class="row" style="margin-bottom:10px;">
+      <button id="tabResumo" type="button">📨 Resumo do dia</button>
+      <button id="tabAnalise" type="button" class="secondary">📊 Análise detalhada</button>
+    </div>
+    <div class="row" id="ctrlResumo">
+      <label class="inline">Vencem em até
+        <select id="selDias">
+          <option value="1">1 dia útil</option>
+          <option value="2" selected>2 dias úteis</option>
+          <option value="3">3 dias úteis</option>
+        </select>
+      </label>
+      <button id="btnAtualizar" type="button">Atualizar</button>
+      <button id="btnCopiar" type="button" class="secondary" title="Copia a versão em texto, pronta para colar num grupo de WhatsApp/Telegram">📋 Copiar texto (WhatsApp)</button>
+      <span style="flex:1;"></span>
+      <span id="geradoEm" style="font-size:11px;color:var(--muted);"></span>
+    </div>
+    <div class="row" id="ctrlAnalise" style="display:none;">
+      <span style="font-size:12px;color:var(--muted);">Desempenho por estado, dificuldades e pontos de atenção — por transportadora (pior OTD primeiro).</span>
+      <span style="flex:1;"></span>
+      <button id="btnAtualizarAnalise" type="button" class="secondary">Atualizar</button>
+    </div>
+  </div>
+
+  <div id="reportCard"><div class="empty">Carregando relatório…</div></div>
+
+  <div class="panel alertas-panel" id="alertasPanel" style="display:none;">
+    <h2>⚠ Alertas de entrega</h2>
+    <div class="row" style="gap:8px; align-items:center; margin-bottom:6px; font-size:12px; color:var(--muted);">
+      <span>Em risco: previsão vence em ≤</span>
+      <select id="alertaDias" style="width:auto;"><option>1</option><option selected>2</option><option>3</option><option>5</option></select>
+      <span>dia(s) e sem sinal de saída para entrega.</span>
+    </div>
+    <div id="riscoBody"></div>
+    <h3 class="alertas-h">Cobertura de rastreio — entregas com ao menos 1 evento OCOREN (cobertura baixa = OTD cego)</h3>
+    <div id="coberturaBody"></div>
+    <h3 class="alertas-h">Praças-problema — cidades × transportadora com ocorrências recorrentes (renegociar prazo ou trocar de transportadora)</h3>
+    <div id="reincidenciaBody"></div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+const selDias = document.getElementById('selDias');
+const reportCard = document.getElementById('reportCard');
+const geradoEm = document.getElementById('geradoEm');
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(t._h); t._h = setTimeout(() => (t.style.display = 'none'), 2600);
+}
+
+async function carregar() {
+  reportCard.innerHTML = '<div class="empty">Carregando relatório…</div>';
+  try {
+    const resp = await fetch('/api/relatorio-diario?formato=html&dias=' + encodeURIComponent(selDias.value));
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    reportCard.innerHTML = await resp.text();
+    geradoEm.textContent = 'Atualizado agora';
+  } catch (e) {
+    reportCard.innerHTML = '<div class="empty" style="color:var(--bad);">Falha ao carregar: ' + e.message + '</div>';
+  }
+}
+
+async function copiarTexto(transportadora) {
+  let txt = '';
+  try {
+    let url = '/api/relatorio-diario?formato=texto&dias=' + encodeURIComponent(selDias.value);
+    if (transportadora) url += '&transportadora=' + encodeURIComponent(transportadora);
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    txt = await resp.text();
+  } catch (e) {
+    showToast('Falha ao gerar o texto: ' + e.message);
+    return;
+  }
+  const ok = await copiarParaAreaDeTransferencia(txt);
+  if (ok) {
+    showToast(transportadora ? ('Copiado: ' + transportadora + ' — cole no grupo dela.')
+                             : 'Relatório copiado — cole no WhatsApp.');
+  } else {
+    // Último recurso (navegador antigo ou sem permissão): mostra para copiar na mão.
+    abrirCopiaManual(txt);
+  }
+}
+
+// Copia com fallback: a API navigator.clipboard só existe em HTTPS ou localhost;
+// acessando por http://IP na rede interna ela é undefined, então caímos no
+// execCommand('copy'), que funciona em contexto não seguro.
+async function copiarParaAreaDeTransferencia(txt) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try { await navigator.clipboard.writeText(txt); return true; } catch (e) { /* cai no fallback */ }
+  }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '-1000px';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+function abrirCopiaManual(txt) {
+  const ov = document.createElement('div');
+  ov.className = 'copy-overlay';
+  ov.innerHTML =
+    '<div class="copy-box">' +
+    '<p>Seu navegador bloqueou a cópia automática. Toque no texto, selecione tudo e copie (Ctrl+C / segurar → Copiar).</p>' +
+    '<textarea readonly></textarea>' +
+    '<div class="copy-actions"><button type="button" class="secondary" data-fechar>Fechar</button></div>' +
+    '</div>';
+  const ta = ov.querySelector('textarea');
+  ta.value = txt;
+  ov.addEventListener('click', (e) => { if (e.target === ov || e.target.hasAttribute('data-fechar')) ov.remove(); });
+  document.body.appendChild(ov);
+  ta.focus();
+  ta.select();
+}
+
+async function carregarAnalise() {
+  reportCard.innerHTML = '<div class="empty">Analisando desempenho por estado…</div>';
+  try {
+    const resp = await fetch('/api/relatorio-diario/analise?formato=html');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    reportCard.innerHTML = await resp.text();
+  } catch (e) {
+    reportCard.innerHTML = '<div class="empty" style="color:var(--bad);">Falha ao carregar: ' + e.message + '</div>';
+  }
+}
+
+let _view = 'resumo';
+function setView(v) {
+  _view = v;
+  const resumo = v === 'resumo';
+  tabResumo.className = resumo ? '' : 'secondary';
+  tabAnalise.className = resumo ? 'secondary' : '';
+  document.getElementById('ctrlResumo').style.display = resumo ? 'flex' : 'none';
+  document.getElementById('ctrlAnalise').style.display = resumo ? 'none' : 'flex';
+  resumo ? carregar() : carregarAnalise();
+}
+
+const tabResumo = document.getElementById('tabResumo');
+const tabAnalise = document.getElementById('tabAnalise');
+tabResumo.addEventListener('click', () => setView('resumo'));
+tabAnalise.addEventListener('click', () => setView('analise'));
+document.getElementById('btnAtualizar').addEventListener('click', carregar);
+document.getElementById('btnAtualizarAnalise').addEventListener('click', carregarAnalise);
+document.getElementById('btnCopiar').addEventListener('click', () => copiarTexto());
+selDias.addEventListener('change', carregar);
+// Botões "Copiar desta transp." são injetados dentro do relatório (delegação de clique).
+reportCard.addEventListener('click', (ev) => {
+  const btn = ev.target.closest('[data-copy-transp]');
+  if (btn) copiarTexto(btn.getAttribute('data-copy-transp'));
+});
+
+// ── Alertas de entrega (em risco · cobertura de rastreio · praças-problema) ──
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function _dBR(s) { if (!s) return '—'; const p = String(s).slice(0, 10).split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : s; }
+
+async function loadAlertas() {
+  const dias = document.getElementById('alertaDias').value || '2';
+  let a;
+  try { a = await (await fetch('/api/tracking/alertas?dias=' + encodeURIComponent(dias))).json(); }
+  catch (e) { return; }
+  const risco = a.em_risco || [], cob = a.cobertura || [];
+  const panel = document.getElementById('alertasPanel');
+  if (!risco.length && !cob.length) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+
+  const rb = document.getElementById('riscoBody');
+  if (!risco.length) {
+    rb.innerHTML = '<div style="font-size:12.5px;color:var(--muted);">Nenhuma entrega em risco na janela. 👍</div>';
+  } else {
+    rb.innerHTML =
+      `<table class="alertas-tbl"><thead><tr><th>Prazo</th><th>Situação</th><th>CTe</th><th>NF</th><th>Transportadora</th><th>Destino</th><th>Cliente</th></tr></thead><tbody>` +
+      risco.map(r => {
+        const dpv = r.dias_para_vencer;
+        const quando = dpv < 0 ? `<b style="color:var(--bad)">vencido ${-dpv}d</b>` : (dpv === 0 ? '<b style="color:var(--warn)">vence hoje</b>' : `em ${dpv}d`);
+        return `<tr><td>${_dBR(r.data_prevista)}<div style="font-size:11px;color:var(--muted)">${quando}</div></td>`
+          + `<td>${escapeHtml(r.status || '')}</td><td>${escapeHtml(r.numero_cte || '—')}</td>`
+          + `<td>${escapeHtml(r.numeros_nf || '—')}</td><td>${escapeHtml(r.transportadora || '')}</td>`
+          + `<td>${escapeHtml(r.destino || '')}</td><td>${escapeHtml(r.cliente || '')}</td></tr>`;
+      }).join('') + '</tbody></table>';
+  }
+
+  const cb = document.getElementById('coberturaBody');
+  cb.innerHTML = cob.map(c => {
+    const pct = c.cobertura_pct == null ? 0 : c.cobertura_pct;
+    const cor = pct >= 90 ? 'var(--ok)' : (pct >= 60 ? 'var(--warn)' : 'var(--bad)');
+    return `<div class="cob-row"><span class="cob-nome">${escapeHtml(c.transportadora)}</span>`
+      + `<span class="cob-bar"><span class="cob-fill" style="width:${pct}%;background:${cor}"></span></span>`
+      + `<span class="cob-val" style="color:${cor}">${c.cobertura_pct == null ? '—' : c.cobertura_pct + '%'}</span>`
+      + `<span class="cob-n">${c.com_evento}/${c.total}</span></div>`;
+  }).join('');
+
+  loadReincidencia();
+}
+
+async function loadReincidencia() {
+  let d;
+  try { d = await (await fetch('/api/ocorrencias/reincidencia')).json(); }
+  catch (e) { return; }
+  const cid = d.cidades || [];
+  const el = document.getElementById('reincidenciaBody');
+  if (!cid.length) { el.innerHTML = '<div style="font-size:12.5px;color:var(--muted);">Sem praça com ocorrência recorrente no período. 👍</div>'; return; }
+  el.innerHTML =
+    `<table class="alertas-tbl"><thead><tr><th>Cidade / UF</th><th>Transportadora</th><th>Motivo principal</th><th class="num">Afetadas</th><th class="num">Ocorr.</th><th class="num">Taxa</th><th class="num">R$ sob risco</th></tr></thead><tbody>` +
+    cid.slice(0, 30).map(c =>
+      `<tr><td>${escapeHtml(c.destino || '')}</td><td>${escapeHtml(c.transportadora || '')}</td>`
+      + `<td>${escapeHtml(c.motivo_top || '—')}</td>`
+      + `<td class="num">${c.entregas_afetadas}/${c.entregas_total}</td>`
+      + `<td class="num">${c.ocorrencias}</td>`
+      + `<td class="num" style="color:var(--bad)">${c.taxa_pct == null ? '—' : c.taxa_pct + '%'}</td>`
+      + `<td class="num">R$ ${Number(c.valor_risco || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>`).join('') +
+    '</tbody></table>';
+}
+document.getElementById('alertaDias').addEventListener('change', loadAlertas);
+
+carregar();
+loadAlertas();
+</script>
+
+<script src="/static/auth.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Conferência de Fatura — LogHub</title>
+<link rel="stylesheet" href="/static/volix.css" />
+<style>
+  /* Volix (tokens + menu + cabeçalho) vem de /static/volix.css. Aqui só o específico. */
+  header p { max-width: 760px; }
+
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 20px; }
+  .panel h2 { margin: 0 0 14px; font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .spread { justify-content: space-between; }
+  label.inline { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  input[type=text], input[type=file], select, textarea {
+    background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 7px 9px; font-size: 13px; font-family: inherit; }
+  textarea { width: 100%; resize: vertical; min-height: 54px; }
+  button, a.btn { background: var(--accent); color: #fff; border: none; padding: 9px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; text-decoration: none; display: inline-block; }
+  button:hover, a.btn:hover { opacity: .9; }
+  button:disabled { opacity: .5; cursor: default; }
+  button.secondary, a.btn.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  button.mini, a.btn.mini { padding: 5px 11px; font-size: 11px; }
+  button.danger { background: transparent; border: 1px solid var(--bad); color: var(--bad); }
+
+  .drop { border: 1.5px dashed var(--border); border-radius: 10px; padding: 22px; text-align: center; color: var(--muted); transition: border-color .15s, background .15s; cursor: pointer; }
+  .drop.drag { border-color: var(--accent); background: rgba(59,130,246,.08); color: var(--text); }
+  .drop b { color: var(--text); }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+  .kpi { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .kpi .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+  .kpi .val { font-size: 24px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .kpi .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .kpi.hero { border-width: 2px; border-color: var(--ok); }
+  .kpi.rev { border-color: var(--warn); }
+  .kpi.clic { cursor: pointer; transition: border-color .12s, box-shadow .12s, transform .06s; }
+  .kpi.clic:hover { border-color: var(--muted); }
+  .kpi.clic:active { transform: translateY(1px); }
+  .kpi.clic::after { content: '⤵'; float: right; font-size: 11px; color: var(--muted); margin-top: -12px; opacity: .5; }
+  .kpi.clic:hover::after { opacity: 1; color: var(--accent); }
+  .kpi.sel { border-color: var(--accent) !important; box-shadow: inset 0 0 0 2px var(--accent); }
+  .kpi.sel::after { content: '✕'; color: var(--accent); opacity: 1; }
+
+  .bandpills { display:flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; align-items:center; }
+  .pill { display:inline-flex; align-items:center; gap:6px; font-size:12px; background: var(--bg); border:1px solid var(--border); border-radius: 20px; padding: 5px 12px; cursor: pointer; transition: border-color .12s, background .12s; user-select:none; }
+  .pill:hover { border-color: var(--muted); }
+  .pill.active { background: rgba(59,130,246,.14); border-color: var(--accent); }
+  .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody tr.clic { cursor: pointer; }
+  tbody tr.clic:hover { background: rgba(255,255,255,.03); }
+
+  .st { display:inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .st.CONFERE { background: var(--ok-bg); color: var(--ok); }
+  .st.DIVERGE_CTE { background: var(--bad-bg); color: var(--bad); }
+  .st.CTE_DIVERGENTE { background: var(--warn-bg); color: var(--warn); }
+  .st.NAO_AUDITADO { background: var(--spot-bg); color: var(--spot); }
+  .st.aberta { background: var(--spot-bg); color: var(--spot); }
+  .st.conferida { background: rgba(59,130,246,.16); color: var(--accent); }
+  .st.aprovada { background: var(--ok-bg); color: var(--ok); }
+  .st.contestada { background: var(--bad-bg); color: var(--bad); }
+  .st.paga { background: rgba(139,195,74,.16); color: #8bc34a; }
+
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-bottom: 20px; }
+  .card .card-head { display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px; gap: 10px; }
+  .card h3 { margin: 0; font-size: 13px; color: var(--text); }
+  .card .hint { font-size: 11px; color: var(--muted); }
+  .donut-wrap { display:flex; gap: 18px; align-items:center; flex-wrap: wrap; }
+  svg.chart { width: 100%; height: auto; display: block; max-width: 220px; }
+  .legend { display:flex; flex-direction: column; gap: 4px; font-size: 12px; flex:1; min-width: 200px; }
+  .legend .li { display:flex; align-items:center; gap:8px; justify-content: space-between; padding: 4px 6px; border-radius: 5px; cursor: pointer; border: 1px solid transparent; }
+  .legend .li:hover { background: rgba(255,255,255,.04); }
+  .legend .li.sel { border-color: var(--accent); background: rgba(59,130,246,.12); font-weight: 600; }
+  .legend .li .nm { display:flex; align-items:center; gap:8px; }
+
+  .empty { color: var(--muted); font-size: 13px; padding: 30px 0; text-align: center; }
+  .muted { color: var(--muted); }
+  .warn-txt { color: var(--warn); }
+  #tip { position: fixed; z-index: 80; display: none; background: #0b0f17; border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-size: 12px; pointer-events: none; box-shadow: 0 6px 20px rgba(0,0,0,.4); max-width: 260px; }
+
+  .modal-back { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: flex-start; justify-content: center; z-index: 100; overflow: auto; padding: 40px 16px; }
+  .modal-back.open { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; width: min(760px, 100%); box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+  .modal h3 { margin: 0 0 6px; font-size: 16px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 14px 0; }
+  .form-grid label { display:flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  .form-grid input, .form-grid select { width: 100%; }
+  @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+  .prev-scroll { max-height: 40vh; overflow: auto; border: 1px solid var(--border); border-radius: 8px; margin-top: 6px; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+  .backlink { display:inline-flex; align-items:center; gap:6px; color: var(--accent); cursor:pointer; font-size: 13px; margin-bottom: 6px; }
+  .hidden { display: none !important; }
+  .alertas-panel { border-color: var(--warn); }
+  .alertas-panel h2 { color: var(--warn); }
+  .alertas-h { font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); margin: 14px 0 6px; }
+  .alertas-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .alertas-tbl th, .alertas-tbl td { padding: 5px 9px; border-bottom: 1px solid var(--border); text-align: left; }
+  .alertas-tbl th.num, .alertas-tbl td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .alertas-tbl th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <img class="brand-iso" width="42" height="42" src="/static/volix-selo-grafite.svg" alt="Volix">
+    <div class="volix">Log<b>H</b>ub</div>
+    <div class="glow"></div>
+    <div class="tag">Sua logística <b>num só lugar</b></div>
+  </div>
+  <nav class="side-nav">
+    <a href="/home">🏠 Início</a>
+    <div class="sec">Financeiro</div>
+    <a href="/audit">📋 Auditoria de CTe</a>
+    <a href="/percent-nf">💰 Frete sobre Faturamento</a>
+    <a href="/conferencia" class="active">🧾 Conferência de Fatura</a>
+    <div class="sec">Suprimentos</div>
+    <a href="/coletas">🚚 Coleta em Fornecedores</a>
+    <div class="sec">Expedição</div>
+    <a href="/romaneio">📦 Romaneio de Expedição</a>
+    <div class="sec">Entregas</div>
+    <a href="/tracking">🗼 Torre de Controle</a>
+    <a href="/relatorio-dia">📨 Relatório do Dia</a>
+    <a href="/scorecard">🏆 Scorecard de Desempenho</a>
+    <div class="sec">Comercial</div>    <a href="/vendas">📈 Análise de Vendas</a>
+    <div class="sec">Configuração</div>
+    <a href="/cadastro">🗂️ Cadastro de Tabelas</a>
+  </nav>
+</aside>
+
+<header>
+  <img class="vmark vmark-dark" width="40" height="40" src="/static/volix-selo-grafite.svg" alt="Volix"><img class="vmark vmark-light" width="40" height="40" src="/static/volix-selo-principal.svg" alt="Volix">
+  <h1>Conferência de Fatura</h1>
+  <p>Conferência de fatura: cada CTe cobrado pela transportadora é batido contra a auditoria já feita. Fecha o ciclo financeiro — <b>só libere o que confere</b>. <span style="color:var(--ok)">Confere</span> · <span style="color:var(--bad)">fatura ≠ CTe</span> · <span style="color:var(--warn)">CTe acima da tabela</span> · <span style="color:var(--spot)">não auditado</span>.</p>
+</header>
+
+<main>
+
+  <!-- ═══ LISTA DE FATURAS ═══ -->
+  <div id="listView">
+    <div class="panel">
+      <h2>Conferir nova fatura</h2>
+      <div class="drop" id="drop">
+        <div>📥 <b>Arraste a fatura aqui</b> ou clique para escolher</div>
+        <div style="font-size:12px;margin-top:6px;">Excel (.xlsx), CSV, <b>PDF</b> ou <b>DOCCOB (EDI PROCEDA)</b> — detecta o formato automaticamente. Uma linha por CTe, com número/chave e valor cobrado.</div>
+        <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls,.csv,.txt,.pdf,.edi,.rem,.doccob,.pro,.cob" class="hidden" />
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <button class="secondary mini" id="doccobBtn" type="button" title="Forçar a leitura como EDI PROCEDA (DOCCOB — Documento de Cobrança), caso o arquivo texto seja ambíguo">📡 Forçar DOCCOB (EDI PROCEDA)</button>
+        <input type="file" id="doccobInput" accept=".txt,.edi,.rem,.doccob,.pro,.cob" class="hidden" />
+        <button class="secondary mini" id="auditPullBtn" type="button" title="Montar a conferência a partir dos CTes já aprovados (OK) na auditoria">✅ Puxar CTes aprovados da auditoria</button>
+      </div>
+      <div id="uploadMsg" style="font-size:13px;margin-top:12px;display:none;"></div>
+    </div>
+
+    <div class="panel alertas-panel" id="alertasBox" style="display:none;">
+      <div class="row spread">
+        <h2 style="margin:0;">⚠ Riscos de pagamento indevido</h2>
+        <span id="alertasResumo" class="muted" style="font-size:12px;"></span>
+      </div>
+      <div id="alertasBody" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="panel">
+      <div class="row spread">
+        <h2 style="margin:0;">Faturas conferidas</h2>
+        <button class="secondary mini" id="refreshBtn" type="button">Atualizar</button>
+      </div>
+      <div style="overflow-x:auto;margin-top:12px;">
+        <table id="faturasTbl">
+          <thead>
+            <tr>
+              <th>Transportadora</th>
+              <th>Nº fatura</th>
+              <th>Competência</th>
+              <th class="num">CTes</th>
+              <th class="num">Total</th>
+              <th class="num">Liberado</th>
+              <th class="num">Contestável</th>
+              <th>Situação</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="faturasBody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="faturasEmpty" style="display:none;">Nenhuma fatura conferida ainda. Suba a primeira fatura acima.</div>
+      <div id="faturasPager"></div>
+    </div>
+  </div>
+
+  <!-- ═══ DETALHE DA FATURA ═══ -->
+  <div id="detailView" class="hidden">
+    <div class="backlink" id="backLink">← Voltar às faturas</div>
+
+    <div class="panel">
+      <div class="row spread">
+        <div>
+          <h2 style="margin:0 0 4px;" id="detTitle"></h2>
+          <div class="muted" style="font-size:12px;" id="detSub"></div>
+        </div>
+        <div class="row">
+          <label class="inline">Situação
+            <select id="statusSel">
+              <option value="aberta">Aberta</option>
+              <option value="conferida">Conferida</option>
+              <option value="aprovada">Aprovada</option>
+              <option value="contestada">Contestada</option>
+              <option value="paga">Paga</option>
+            </select>
+          </label>
+          <button class="btn secondary mini" id="editHdrBtn" type="button" title="Corrigir nº da fatura, competência ou transportadora">✏️ Editar dados</button>
+          <a class="btn mini" id="relatorioBtn" href="#" title="Relatório em PDF: nº da fatura, CTes e valores — para baixar/anexar ao pagamento">📥 Relatório PDF</a>
+          <a class="btn secondary mini" id="exportBtn" href="#">📄 Excel</a>
+          <button class="danger mini" id="deleteBtn" type="button">Excluir</button>
+        </div>
+      </div>
+      <div id="aprovacaoAviso" class="hidden" style="margin-top:12px;padding:10px 12px;border:1px solid var(--bad);border-radius:8px;background:var(--bad-bg);font-size:12px;color:var(--bad);"></div>
+      <!-- Edição do cabeçalho (nº esquecido, transportadora/competência lida errada) -->
+      <div id="editHdrForm" class="hidden" style="margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2,rgba(255,255,255,.03));">
+        <div class="row" style="gap:12px;flex-wrap:wrap;align-items:flex-end;">
+          <label class="inline" style="flex-direction:column;align-items:flex-start;gap:4px;">Nº da fatura
+            <input id="editNumero" type="text" placeholder="ex.: 005632756" style="min-width:160px;">
+          </label>
+          <label class="inline" style="flex-direction:column;align-items:flex-start;gap:4px;">Competência
+            <input id="editComp" type="text" placeholder="ex.: 2026-09 ou Setembro" style="min-width:160px;">
+          </label>
+          <label class="inline" style="flex-direction:column;align-items:flex-start;gap:4px;">Transportadora
+            <input id="editTransp" type="text" placeholder="nome da transportadora" style="min-width:200px;">
+          </label>
+          <button class="btn mini" id="salvarHdr" type="button">Salvar</button>
+          <button class="btn secondary mini" id="cancelarHdr" type="button">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="kpis" id="detKpis"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Distribuição por situação</h3>
+        <span class="hint">👆 clique numa fatia p/ filtrar a tabela</span>
+      </div>
+      <div class="donut-wrap">
+        <svg class="chart" id="chartDonut"></svg>
+        <div class="legend" id="donutLegend"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="row spread">
+        <h2 style="margin:0;">Linhas da fatura</h2>
+        <button class="secondary mini hidden" id="limparFiltro" type="button">✕ limpar filtro</button>
+      </div>
+      <div style="overflow-x:auto;margin-top:12px;">
+        <table id="linhasTbl">
+          <thead>
+            <tr>
+              <th>Situação</th>
+              <th>Nº CTe</th>
+              <th>Transportadora</th>
+              <th>Destino</th>
+              <th class="num">Valor fatura</th>
+              <th class="num">Valor CTe</th>
+              <th class="num">Tabela</th>
+              <th class="num">Fatura − CTe</th>
+              <th class="num">Contestável</th>
+              <th>Auditoria</th>
+            </tr>
+          </thead>
+          <tbody id="linhasBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" id="naoFatCard">
+      <div class="card-head">
+        <h3>CTes auditados ainda não cobrados nesta fatura</h3>
+        <span class="hint" id="naoFatHint"></span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr><th>Nº CTe</th><th>Emissão</th><th>Destino</th><th class="num">Valor CTe</th><th>Auditoria</th></tr>
+          </thead>
+          <tbody id="naoFatBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Observações</h2>
+      <textarea id="obsInput" placeholder="Anotações desta conferência (ex.: contestação enviada em ..., aguardando retorno)"></textarea>
+      <div class="row" style="margin-top:10px;justify-content:flex-end;">
+        <button class="secondary mini" id="salvarObs" type="button">Salvar observações</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<div id="tip"></div>
+
+<!-- Modal de preview/salvar -->
+<div class="modal-back" id="prevModal">
+  <div class="modal">
+    <h3>Conferir fatura — <span id="prevArquivo" class="muted"></span></h3>
+    <div class="muted" style="font-size:12px;" id="prevResumo"></div>
+    <div class="form-grid">
+      <label>Transportadora
+        <input type="text" id="prevTransp" list="transpList" placeholder="Selecione ou digite" />
+        <datalist id="transpList"></datalist>
+      </label>
+      <label>Nº da fatura
+        <input type="text" id="prevNumero" placeholder="ex.: 2026/0712" />
+      </label>
+      <label>Competência
+        <input type="text" id="prevComp" placeholder="detectada dos CTes" />
+      </label>
+    </div>
+    <div class="prev-scroll">
+      <table>
+        <thead><tr><th>#</th><th>Nº CTe</th><th>Chave</th><th class="num">Valor</th></tr></thead>
+        <tbody id="prevBody"></tbody>
+      </table>
+    </div>
+    <div class="modal-actions">
+      <button class="secondary" id="prevCancelar" type="button">Cancelar</button>
+      <button id="prevSalvar" type="button">Salvar conferência</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: puxar CTes aprovados da auditoria -->
+<div class="modal-back" id="auditModal">
+  <div class="modal" style="width:min(480px,100%);">
+    <h3>Puxar CTes aprovados da auditoria</h3>
+    <div class="muted" style="font-size:12px;">Monta a conferência com os CTes já auditados como <b>OK</b> (aprovados) — o valor do próprio CTe vira o valor da linha. Filtros opcionais.</div>
+    <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+      <label>Transportadora
+        <input type="text" id="auditTransp" list="transpList" placeholder="Todas" />
+      </label>
+      <label>Mês (competência)
+        <input type="text" id="auditMes" placeholder="AAAA-MM (opcional)" />
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="secondary" id="auditCancelar" type="button">Cancelar</button>
+      <button id="auditPuxar" type="button">Puxar CTes aprovados</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/pager.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const SVGNS = 'http://www.w3.org/2000/svg';
+const COR = { ok:'#22c55e', warn:'#f59e0b', bad:'#ef4444', spot:'#64748b', accent:'#3b82f6', muted:'#8b93a7', bg:'#0f1420', text:'#e6e9f0' };
+const ST_COR = { CONFERE: COR.ok, DIVERGE_CTE: COR.bad, CTE_DIVERGENTE: COR.warn, NAO_AUDITADO: COR.spot };
+const ST_LABEL = { CONFERE:'Confere', DIVERGE_CTE:'Fatura ≠ CTe', CTE_DIVERGENTE:'CTe não aprovado (auditoria)', NAO_AUDITADO:'Não auditado' };
+const AUD_LABEL = { OK:'OK', DIVERGENTE:'Divergente', SPOT:'Spot', SEM_VALOR_COBRADO:'Sem valor', TRANSPORTADORA_NAO_MAPEADA:'Não mapeada', SEM_TABELA:'Sem tabela', SEM_COBERTURA:'Sem cobertura', ERRO_LEITURA:'Erro leitura' };
+// Decisão de aprovação da auditoria (mais relevante que o status cru p/ a conferência).
+const APROV_LABEL = { AUTOMATICA:'Aprovado (auto)', APROVADO_MANUAL:'Aprovado (manual)', PENDENTE:'Pendente', REPROVADO_MANUAL:'Reprovado' };
+const audLabel = (l) => APROV_LABEL[l.aprovacao_auditoria] || AUD_LABEL[l.status_auditoria] || '—';
+
+let PREVIEW = null;   // resultado do /preview aguardando salvar
+let FATURA = null;    // fatura aberta no detalhe
+let filtroStatus = null;   // array de status (grupo) ou null — cruza a tabela e a pizza
+const mesmoGrupo = (a, b) => !!a && !!b && a.length === b.length && a.every(x => b.includes(x));
+
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const fmtInt = (n) => (n ?? 0).toLocaleString('pt-BR');
+const money = (n) => n === null || n === undefined ? '—' : 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+function moneyC(n) {
+  n = n ?? 0; const a = Math.abs(n);
+  if (a >= 1e6) return 'R$ ' + (n/1e6).toLocaleString('pt-BR', { maximumFractionDigits:2 }) + ' mi';
+  if (a >= 1e3) return 'R$ ' + (n/1e3).toLocaleString('pt-BR', { maximumFractionDigits:1 }) + ' mil';
+  return 'R$ ' + n.toLocaleString('pt-BR', { maximumFractionDigits:0 });
+}
+const el = (tag, attrs = {}, text = null) => { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text !== null) e.textContent = text; return e; };
+const clear = (svg) => { while (svg.firstChild) svg.removeChild(svg.firstChild); };
+const tip = $('#tip');
+const showTip = (html, ev) => { tip.innerHTML = html; tip.style.display = 'block'; tip.style.left = (ev.clientX + 14) + 'px'; tip.style.top = (ev.clientY + 14) + 'px'; };
+const hideTip = () => { tip.style.display = 'none'; };
+
+// ─── Upload / preview ──────────────────────────────────────────────────────
+const drop = $('#drop'), fileInput = $('#fileInput');
+drop.addEventListener('click', () => fileInput.click());
+['dragover','dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('drag'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('drag'); }));
+drop.addEventListener('drop', e => { if (e.dataTransfer.files.length) enviarArquivo(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e => { if (e.target.files.length) enviarArquivo(e.target.files[0]); fileInput.value = ''; });
+
+// DOCCOB (EDI PROCEDA)
+const doccobInput = $('#doccobInput');
+$('#doccobBtn').addEventListener('click', () => doccobInput.click());
+doccobInput.addEventListener('change', e => { if (e.target.files.length) enviarArquivo(e.target.files[0], true); doccobInput.value = ''; });
+
+function mostrarMsg(html, tipo) {
+  // tipo: 'erro' (caixa vermelha), 'info' (texto), ou '' (esconde)
+  const msg = $('#uploadMsg');
+  if (!html) { msg.style.display = 'none'; msg.innerHTML = ''; return; }
+  msg.style.display = 'block';
+  msg.style.cssText = tipo === 'erro'
+    ? 'font-size:13px;margin-top:12px;display:block;padding:10px 12px;border:1px solid var(--bad);border-radius:8px;background:var(--bad-bg);color:var(--bad);'
+    : 'font-size:13px;margin-top:12px;display:block;color:var(--muted);';
+  msg.innerHTML = html;
+}
+
+async function enviarArquivo(file, doccob = false) {
+  mostrarMsg('Lendo <b>' + escapeHtml(file.name) + '</b>' + (doccob ? ' (DOCCOB)' : '') + '…', 'info');
+  const fd = new FormData(); fd.append('file', file);
+  const url = doccob ? '/api/conferencia/preview-doccob' : '/api/conferencia/preview';
+  try {
+    const resp = await fetch(url, { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error((typeof data.detail === 'string' ? data.detail : '') || ('HTTP ' + resp.status));
+    PREVIEW = data;
+    mostrarMsg('');
+    await abrirPreview(data);
+  } catch (e) {
+    mostrarMsg('⚠ Não foi possível importar <b>' + escapeHtml(file.name) + '</b>:<br>' + escapeHtml(e.message), 'erro');
+  }
+}
+
+async function carregarTranspList() {
+  try {
+    const r = await fetch('/api/cadastro/transportadoras');
+    if (!r.ok) return;
+    const transps = await r.json();
+    const dl = $('#transpList'); dl.innerHTML = '';
+    transps.forEach(t => { const o = document.createElement('option'); o.value = t.nome; dl.appendChild(o); });
+  } catch (e) { /* segue sem sugestões */ }
+}
+
+// Puxar CTes aprovados da auditoria
+$('#auditPullBtn').addEventListener('click', async () => {
+  await carregarTranspList();
+  $('#auditTransp').value = ''; $('#auditMes').value = '';
+  $('#auditModal').classList.add('open');
+});
+$('#auditCancelar').addEventListener('click', () => $('#auditModal').classList.remove('open'));
+$('#auditModal').addEventListener('click', e => { if (e.target === $('#auditModal')) $('#auditModal').classList.remove('open'); });
+$('#auditPuxar').addEventListener('click', async () => {
+  const transp = $('#auditTransp').value.trim(), mes = $('#auditMes').value.trim();
+  const btn = $('#auditPuxar'); btn.disabled = true; btn.textContent = 'Puxando…';
+  try {
+    const qs = new URLSearchParams();
+    if (transp) qs.set('transportadora', transp);
+    if (mes) qs.set('mes', mes);
+    const resp = await fetch('/api/conferencia/auditoria-aprovados?' + qs.toString());
+    const data = await resp.json();
+    if (!resp.ok) throw new Error((typeof data.detail === 'string' ? data.detail : '') || ('HTTP ' + resp.status));
+    if (!data.itens.length) { alert('Nenhum CTe aprovado (status OK) na auditoria com esses filtros.'); return; }
+    $('#auditModal').classList.remove('open');
+    PREVIEW = { arquivo: 'Auditoria — CTes aprovados' + (mes ? ' ' + mes : ''), itens: data.itens, ignoradas: 0,
+                cabecalho: { transportadora: transp }, competencia: mes };
+    await abrirPreview(PREVIEW);
+  } catch (e) {
+    alert('Falha ao puxar da auditoria: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Puxar CTes aprovados';
+  }
+});
+
+async function abrirPreview(data) {
+  $('#prevArquivo').textContent = data.arquivo || '';
+  const tot = data.itens.reduce((a, it) => a + (it.valor_fatura || 0), 0);
+  const fmtLabel = { planilha: 'Excel/CSV', doccob: 'DOCCOB (EDI)', pdf: 'PDF' }[data.formato] || '';
+  $('#prevResumo').textContent = (fmtLabel ? `[${fmtLabel}] ` : '') + `${data.itens.length} CTes detectados · total ${money(tot)}` + (data.ignoradas ? ` · ${data.ignoradas} linha(s) ignorada(s)` : '');
+  const body = $('#prevBody'); body.innerHTML = '';
+  data.itens.forEach((it, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="muted">${i+1}</td><td>${escapeHtml(it.numero || '—')}</td><td class="muted" style="font-size:11px;">${escapeHtml(it.chave || '—')}</td><td class="num">${money(it.valor_fatura)}</td>`;
+    body.appendChild(tr);
+  });
+  $('#prevComp').value = data.competencia || '';
+  $('#prevNumero').value = '';
+  await carregarTranspList();
+  // Prefill da transportadora: DOCCOB traz no cabeçalho; "puxar da auditoria" traz o filtro escolhido.
+  $('#prevTransp').value = (data.cabecalho && data.cabecalho.transportadora) || '';
+  $('#prevModal').classList.add('open');
+}
+function fecharPreview() { $('#prevModal').classList.remove('open'); PREVIEW = null; }
+$('#prevCancelar').addEventListener('click', fecharPreview);
+$('#prevModal').addEventListener('click', e => { if (e.target === $('#prevModal')) fecharPreview(); });
+
+$('#prevSalvar').addEventListener('click', async () => {
+  if (!PREVIEW) return;
+  const btn = $('#prevSalvar'); btn.disabled = true; btn.textContent = 'Salvando…';
+  try {
+    const resp = await fetch('/api/conferencia/faturas', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        transportadora: $('#prevTransp').value.trim(),
+        numero_fatura: $('#prevNumero').value.trim(),
+        competencia: $('#prevComp').value.trim() || null,
+        arquivo: PREVIEW.arquivo || '',
+        itens: PREVIEW.itens,
+      }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || ('HTTP ' + resp.status));
+    fecharPreview();
+    await carregarLista();
+    abrirDetalhe(data.id);
+  } catch (e) {
+    alert('Falha ao salvar: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Salvar conferência';
+  }
+});
+
+// ─── Lista de faturas ──────────────────────────────────────────────────────
+let FAT_OFFSET = 0, FAT_LIMIT = 100, FAT_TOTAL = 0;
+async function carregarLista(keepPage) {
+  if (!keepPage) FAT_OFFSET = 0;
+  let d;
+  try {
+    const resp = await fetch('/api/conferencia/faturas?limit=' + FAT_LIMIT + '&offset=' + FAT_OFFSET);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    d = await resp.json();
+  } catch (e) {
+    $('#faturasBody').innerHTML = ''; $('#faturasPager').innerHTML = '';
+    $('#faturasEmpty').style.display = 'block';
+    $('#faturasEmpty').textContent = 'Não foi possível carregar as faturas. Verifique se o servidor está no ar.';
+    return;
+  }
+  // Tolerante às duas formas: {total, faturas:[...]} (novo) ou lista crua [...]
+  const faturas = Array.isArray(d) ? d : (d.faturas || []);
+  FAT_TOTAL = Array.isArray(d) ? d.length : (d.total != null ? d.total : faturas.length);
+  const body = $('#faturasBody'); body.innerHTML = '';
+  $('#faturasEmpty').textContent = 'Nenhuma fatura conferida ainda. Suba a primeira fatura acima.';
+  $('#faturasEmpty').style.display = FAT_TOTAL ? 'none' : 'block';
+  faturas.forEach(f => {
+    const r = f.resumo;
+    const tr = document.createElement('tr');
+    tr.className = 'clic';
+    tr.innerHTML = `
+      <td><b>${escapeHtml(f.transportadora || '—')}</b></td>
+      <td>${escapeHtml(f.numero_fatura || '—')}</td>
+      <td class="muted">${escapeHtml(f.competencia || '—')}</td>
+      <td class="num">${fmtInt(r.qtd_ctes)}</td>
+      <td class="num">${money(r.total_fatura)}</td>
+      <td class="num" style="color:var(--ok)">${money(r.valor_liberado)}</td>
+      <td class="num" style="color:${r.valor_contestavel>0?'var(--bad)':'var(--muted)'}">${money(r.valor_contestavel)}</td>
+      <td><span class="st ${f.status}">${f.status}</span></td>
+      <td class="num muted">›</td>`;
+    tr.addEventListener('click', () => abrirDetalhe(f.id));
+    body.appendChild(tr);
+  });
+  Pager.render($('#faturasPager'), {
+    offset: FAT_OFFSET, limit: FAT_LIMIT, total: FAT_TOTAL, pageSizes: [50, 100, 200],
+    onGo: (novo) => { FAT_OFFSET = novo; carregarLista(true); },
+    onLimit: (novo) => { FAT_LIMIT = novo; FAT_OFFSET = 0; carregarLista(true); },
+  });
+}
+async function carregarAlertas() {
+  let a;
+  try { a = await (await fetch('/api/conferencia/alertas')).json(); }
+  catch (e) { return; }
+  const dup = a.duplicados || [], orf = a.orfaos || [];
+  if (!dup.length && !orf.length) { $('#alertasBox').style.display = 'none'; return; }
+  $('#alertasBox').style.display = '';
+  const partes = [];
+  if (dup.length) partes.push(`${dup.length} CTe(s) em faturas repetidas · ${money(a.valor_duplicado_total)} em risco de pagar 2×`);
+  if (orf.length) partes.push(`${orf.length} linha(s) cobradas sem CTe na auditoria · ${money(a.valor_orfao_total)}`);
+  $('#alertasResumo').textContent = partes.join('  ·  ');
+
+  let html = '';
+  if (dup.length) {
+    html += '<h3 class="alertas-h">CTe cobrado em mais de uma fatura (pagar 2×)</h3>';
+    html += '<table class="alertas-tbl"><thead><tr><th>Nº CTe</th><th>Vezes</th><th>Faturas</th><th class="num">Valor repetido</th></tr></thead><tbody>';
+    html += dup.map(d => {
+      const fats = d.ocorrencias.map(o => `${escapeHtml(o.numero_fatura || '—')} (${escapeHtml(o.transportadora || '')})`).join(', ');
+      return `<tr><td>${escapeHtml(d.numero_cte || d.chave_cte || '—')}</td><td>${d.vezes}</td><td>${fats}</td><td class="num" style="color:var(--bad)">${money(d.valor_repetido)}</td></tr>`;
+    }).join('');
+    html += '</tbody></table>';
+  }
+  if (orf.length) {
+    html += '<h3 class="alertas-h">CTe cobrado sem correspondência na auditoria (órfão)</h3>';
+    html += '<table class="alertas-tbl"><thead><tr><th>Nº CTe</th><th>Fatura</th><th>Transportadora</th><th class="num">Valor</th></tr></thead><tbody>';
+    html += orf.slice(0, 50).map(o =>
+      `<tr><td>${escapeHtml(o.numero_cte || o.chave_cte || '—')}</td><td>${escapeHtml(o.numero_fatura || '—')}</td><td>${escapeHtml(o.transportadora || '')}</td><td class="num">${money(o.valor_fatura)}</td></tr>`).join('');
+    html += '</tbody></table>';
+    if (orf.length > 50) html += `<div class="muted" style="font-size:12px;">…e mais ${orf.length - 50}.</div>`;
+  }
+  $('#alertasBody').innerHTML = html;
+}
+
+$('#refreshBtn').addEventListener('click', () => { carregarLista(); carregarAlertas(); });
+
+// ─── Detalhe ───────────────────────────────────────────────────────────────
+async function abrirDetalhe(id) {
+  try {
+    const resp = await fetch('/api/conferencia/faturas/' + id);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    FATURA = await resp.json();
+  } catch (e) {
+    alert('Falha ao abrir a fatura: ' + e.message); return;
+  }
+  filtroStatus = null;
+  $('#listView').classList.add('hidden');
+  $('#detailView').classList.remove('hidden');
+  window.scrollTo(0, 0);
+  renderDetalhe();
+}
+function voltarLista() {
+  $('#detailView').classList.add('hidden');
+  $('#listView').classList.remove('hidden');
+  FATURA = null;
+  carregarLista();
+  carregarAlertas();
+}
+$('#backLink').addEventListener('click', voltarLista);
+
+function renderDetalhe() {
+  const f = FATURA, r = f.resumo;
+  $('#detTitle').textContent = (f.transportadora || 'Transportadora') + ' · Fatura ' + (f.numero_fatura || 'sem número');
+  $('#detSub').textContent = `${f.competencia || 'competência não informada'} · ${fmtInt(r.qtd_ctes)} CTes · conferida em ${(f.criada_em || '').slice(0,10)}`;
+  $('#statusSel').value = f.status;
+  $('#obsInput').value = f.observacoes || '';
+  $('#exportBtn').href = '/api/conferencia/faturas/' + f.id + '/export.xlsx';
+  $('#relatorioBtn').href = '/api/conferencia/faturas/' + f.id + '/relatorio.pdf';
+  renderAprovacaoAviso();
+
+  renderKpis();
+  renderDonut();
+  renderLinhas();
+  renderNaoFaturados();
+}
+
+// KPIs clicáveis: cada card cruza o painel por um grupo de situações (toggle liga/desliga).
+function renderKpis() {
+  const r = FATURA.resumo;
+  const cards = [
+    { grupo: ['CONFERE'], cls: 'hero', label: 'Liberado p/ pagamento', color: 'var(--ok)',
+      val: moneyC(r.valor_liberado), sub: `${r.pct_liberado}% do faturado · ${fmtInt(r.por_status.CONFERE)} CTes` },
+    { grupo: null, label: 'Total faturado', val: moneyC(r.total_fatura), sub: `${fmtInt(r.qtd_ctes)} CTes na fatura` },
+    { grupo: ['DIVERGE_CTE', 'CTE_DIVERGENTE', 'NAO_AUDITADO'], cls: 'rev', label: 'Em revisão', color: 'var(--warn)',
+      val: moneyC(r.valor_em_revisao), sub: `${fmtInt(r.qtd_ctes - r.por_status.CONFERE)} CTes a checar` },
+    { grupo: ['DIVERGE_CTE', 'CTE_DIVERGENTE'], label: 'Valor contestável',
+      color: r.valor_contestavel > 0 ? 'var(--bad)' : 'var(--text)', val: moneyC(r.valor_contestavel), sub: 'cobrado acima do CTe/tabela' },
+  ];
+  $('#detKpis').innerHTML = cards.map((c, i) => {
+    const sel = mesmoGrupo(filtroStatus, c.grupo);
+    const titulo = sel ? 'Clique para remover o filtro' : (c.grupo ? 'Clique para filtrar por ' + c.label : 'Clique para ver todas as linhas');
+    return `<div class="kpi ${c.cls || ''} clic${sel ? ' sel' : ''}" data-kpi="${i}" title="${escapeHtml(titulo)}">
+      <div class="label">${c.label}</div>
+      <div class="val"${c.color ? ` style="color:${c.color}"` : ''}>${c.val}</div>
+      <div class="sub">${c.sub}</div></div>`;
+  }).join('');
+  $('#detKpis').querySelectorAll('[data-kpi]').forEach(elm =>
+    elm.addEventListener('click', () => setFiltro(cards[+elm.dataset.kpi].grupo)));
+}
+
+function renderDonut() {
+  const svg = $('#chartDonut'), legend = $('#donutLegend'), r = FATURA.resumo;
+  clear(svg); legend.innerHTML = '';
+  const ordem = ['CONFERE','DIVERGE_CTE','CTE_DIVERGENTE','NAO_AUDITADO'];
+  const segs = ordem.map(s => ({ status:s, n: r.por_status[s] || 0, valor: r.valor_por_status[s] || 0, cor: ST_COR[s] })).filter(s => s.n > 0);
+  const size = 200, cx = size/2, cy = size/2, rOut = 90, rIn = 54;
+  svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+  const total = segs.reduce((a, s) => a + s.n, 0);
+  if (!total) { svg.appendChild(el('text', { x:cx, y:cy, fill:COR.muted, 'font-size':12, 'text-anchor':'middle' }, 'sem dados')); return; }
+  let ang = -Math.PI/2;
+  const arc = (r, a) => [cx + r*Math.cos(a), cy + r*Math.sin(a)];
+  segs.forEach(s => {
+    const frac = s.n/total, a2 = ang + frac*2*Math.PI, big = (a2-ang) > Math.PI ? 1 : 0;
+    const [x1,y1]=arc(rOut,ang),[x2,y2]=arc(rOut,a2),[x3,y3]=arc(rIn,a2),[x4,y4]=arc(rIn,ang);
+    const sel = filtroStatus && filtroStatus.length === 1 && filtroStatus[0] === s.status;
+    const p = el('path', { d:`M${x1} ${y1} A${rOut} ${rOut} 0 ${big} 1 ${x2} ${y2} L${x3} ${y3} A${rIn} ${rIn} 0 ${big} 0 ${x4} ${y4} Z`, fill:s.cor, opacity: sel?1:.9, style:'cursor:pointer' });
+    if (sel) { p.setAttribute('stroke','#fff'); p.setAttribute('stroke-width',2); }
+    p.addEventListener('mousemove', ev => showTip(`<b>${ST_LABEL[s.status]}</b><br>${fmtInt(s.n)} CTes · ${money(s.valor)}<br><span style="color:#8b93a7">clique p/ filtrar</span>`, ev));
+    p.addEventListener('mouseleave', hideTip);
+    p.addEventListener('click', () => setFiltro([s.status]));
+    svg.appendChild(p); ang = a2;
+    const li = document.createElement('div');
+    li.className = 'li' + (sel?' sel':'');
+    li.innerHTML = `<span class="nm"><span class="dot" style="background:${s.cor}"></span>${ST_LABEL[s.status]}</span><span><b>${fmtInt(s.n)}</b> · ${moneyC(s.valor)}</span>`;
+    li.addEventListener('click', () => setFiltro([s.status]));
+    legend.appendChild(li);
+  });
+  svg.appendChild(el('text', { x:cx, y:cy-4, fill:COR.text, 'font-size':18, 'font-weight':700, 'text-anchor':'middle' }, fmtInt(total)));
+  svg.appendChild(el('text', { x:cx, y:cy+14, fill:COR.muted, 'font-size':11, 'text-anchor':'middle' }, 'CTes'));
+}
+
+function setFiltro(grupo) {
+  // grupo: array de status (toggle) ou null (limpa). Reaproveita entre pizza e KPIs.
+  filtroStatus = (grupo === null || mesmoGrupo(filtroStatus, grupo)) ? null : grupo.slice();
+  renderKpis(); renderDonut(); renderLinhas();
+}
+$('#limparFiltro').addEventListener('click', () => setFiltro(null));
+
+function renderLinhas() {
+  const body = $('#linhasBody'); body.innerHTML = '';
+  let linhas = FATURA.linhas;
+  if (filtroStatus) linhas = linhas.filter(l => filtroStatus.includes(l.status));
+  $('#limparFiltro').classList.toggle('hidden', !filtroStatus);
+  linhas.forEach(l => {
+    const diff = l.diff_fatura_cte;
+    const diffTxt = diff === null || diff === undefined ? '—' : (diff > 0 ? '+' : '') + money(diff).replace('R$ ','R$ ');
+    const diffColor = (diff && Math.abs(diff) > 0.05) ? 'var(--bad)' : 'var(--muted)';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="st ${l.status}">${ST_LABEL[l.status]}</span></td>
+      <td>${escapeHtml(l.numero_cte || '—')}</td>
+      <td>${escapeHtml(l.transportadora || '—')}</td>
+      <td class="muted">${escapeHtml(l.destino || '—')}</td>
+      <td class="num"><b>${money(l.valor_fatura)}</b></td>
+      <td class="num">${money(l.valor_cobrado)}</td>
+      <td class="num muted">${money(l.valor_tabela)}</td>
+      <td class="num" style="color:${diffColor}">${l.valor_cobrado===null?'—':diffTxt}</td>
+      <td class="num" style="color:${l.contestavel>0?'var(--bad)':'var(--muted)'}">${l.contestavel>0?money(l.contestavel):'—'}</td>
+      <td class="muted">${audLabel(l)}</td>`;
+    body.appendChild(tr);
+  });
+  if (!linhas.length) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="10" class="empty">Nenhuma linha ${filtroStatus ? 'nesta situação' : ''}.</td>`;
+    body.appendChild(tr);
+  }
+}
+
+function renderNaoFaturados() {
+  const nf = FATURA.nao_faturados || [];
+  const card = $('#naoFatCard'), body = $('#naoFatBody');
+  if (!nf.length) { card.classList.add('hidden'); return; }
+  card.classList.remove('hidden');
+  const tot = nf.reduce((a, l) => a + (l.valor_cobrado || 0), 0);
+  $('#naoFatHint').textContent = `${nf.length} CTe(s) · ${money(tot)} — possível cobrança pendente`;
+  body.innerHTML = '';
+  nf.forEach(l => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHtml(l.numero_cte || '—')}</td>
+      <td class="muted">${(l.data_emissao || '').slice(0,10) || '—'}</td>
+      <td class="muted">${escapeHtml(l.destino || '—')}</td>
+      <td class="num">${money(l.valor_cobrado)}</td>
+      <td class="muted">${audLabel(l)}</td>`;
+    body.appendChild(tr);
+  });
+}
+
+// ─── Trava de aprovação ────────────────────────────────────────────────────
+const _STATUS_APROVACAO = ['aprovada', 'paga'];
+function renderAprovacaoAviso() {
+  const box = $('#aprovacaoAviso');
+  const bloq = (FATURA && FATURA.blockers) || [];
+  if (!bloq.length) { box.classList.add('hidden'); return; }
+  const porMotivo = {};
+  bloq.forEach(b => { porMotivo[b.motivo] = (porMotivo[b.motivo] || 0) + 1; });
+  const detalhe = Object.entries(porMotivo).map(([m, c]) => `${c}× ${m}`).join(' · ');
+  box.classList.remove('hidden');
+  box.innerHTML = `🔒 <b>${bloq.length} CTe(s) impedem aprovar/pagar</b> esta fatura — ${escapeHtml(detalhe)}. Importe/aprove na auditoria (ou conteste) antes de aprovar.`;
+}
+function mensagemBloqueio(status, blockers) {
+  const n = blockers.length;
+  const amostra = blockers.slice(0, 6).map(b => `• CTe ${b.numero_cte || '—'}: ${b.motivo}`).join('\n');
+  return `Não é possível marcar como "${status}".\n${n} CTe(s) precisam estar importados e aprovados na auditoria:\n\n${amostra}${n > 6 ? `\n…e mais ${n - 6}.` : ''}`;
+}
+
+// ─── Ações do detalhe ──────────────────────────────────────────────────────
+async function patchFatura(payload) {
+  const resp = await fetch('/api/conferencia/faturas/' + FATURA.id, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+  });
+  const data = await resp.json();
+  if (!resp.ok) {
+    const det = data.detail;
+    const err = new Error((det && typeof det === 'object') ? det.message : (det || ('HTTP ' + resp.status)));
+    if (det && det.blockers) err.blockers = det.blockers;
+    throw err;
+  }
+  return data;
+}
+$('#statusSel').addEventListener('change', async e => {
+  const novo = e.target.value;
+  // Trava client-side: nem tenta aprovar/pagar com CTes pendentes.
+  if (_STATUS_APROVACAO.includes(novo) && FATURA && !FATURA.aprovavel) {
+    alert(mensagemBloqueio(novo, FATURA.blockers || []));
+    e.target.value = FATURA.status;
+    return;
+  }
+  try { FATURA = await patchFatura({ status: novo }); renderDetalhe(); }
+  catch (err) {
+    alert(err.blockers ? mensagemBloqueio(novo, err.blockers) : ('Falha ao mudar situação: ' + err.message));
+    e.target.value = FATURA.status;
+  }
+});
+$('#salvarObs').addEventListener('click', async () => {
+  const btn = $('#salvarObs'); btn.disabled = true; btn.textContent = 'Salvando…';
+  try { FATURA = await patchFatura({ observacoes: $('#obsInput').value }); btn.textContent = '✓ Salvo'; }
+  catch (err) { alert('Falha ao salvar: ' + err.message); btn.textContent = 'Salvar observações'; }
+  finally { setTimeout(() => { btn.disabled = false; btn.textContent = 'Salvar observações'; }, 1200); }
+});
+$('#deleteBtn').addEventListener('click', async () => {
+  if (!confirm('Excluir esta fatura conferida? Os CTes no histórico de auditoria não são afetados.')) return;
+  try {
+    const resp = await fetch('/api/conferencia/faturas/' + FATURA.id, { method: 'DELETE' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    voltarLista();
+  } catch (e) { alert('Falha ao excluir: ' + e.message); }
+});
+
+// ─── Editar cabeçalho (nº da fatura / competência / transportadora) ──────────
+function abrirEditHdr() {
+  $('#editNumero').value = FATURA.numero_fatura || '';
+  $('#editComp').value = FATURA.competencia || '';
+  $('#editTransp').value = FATURA.transportadora || '';
+  $('#editHdrForm').classList.remove('hidden');
+}
+$('#editHdrBtn').addEventListener('click', () => {
+  $('#editHdrForm').classList.toggle('hidden');
+  if (!$('#editHdrForm').classList.contains('hidden')) abrirEditHdr();
+});
+$('#cancelarHdr').addEventListener('click', () => $('#editHdrForm').classList.add('hidden'));
+$('#salvarHdr').addEventListener('click', async () => {
+  const transp = $('#editTransp').value.trim();
+  if (!transp) { alert('A transportadora não pode ficar em branco.'); return; }
+  const btn = $('#salvarHdr'); btn.disabled = true; btn.textContent = 'Salvando…';
+  try {
+    FATURA = await patchFatura({
+      numero_fatura: $('#editNumero').value.trim(),
+      competencia: $('#editComp').value.trim(),
+      transportadora: transp,
+    });
+    $('#editHdrForm').classList.add('hidden');
+    renderDetalhe();
+  } catch (err) {
+    alert('Falha ao salvar os dados: ' + err.message);
+  } finally { btn.disabled = false; btn.textContent = 'Salvar'; }
+});
+
+carregarLista();
+carregarAlertas();
+</script>
+
+<script src="/static/auth.js" defer></script>
+</body>
+</html>

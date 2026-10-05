@@ -1,0 +1,116 @@
+{
+  "default": {
+    "meta": 6.0,
+    "atencao": 8.0
+  },
+  "por_uf": {
+    "AC": {
+      "meta": 5.0,
+      "atencao": 8.0
+    },
+    "AP": {
+      "meta": 4.8,
+      "atencao": 5.8
+    },
+    "AM": {
+      "meta": 4.95,
+      "atencao": 5.95
+    },
+    "PA": {
+      "meta": 5.29,
+      "atencao": 6.29
+    },
+    "RO": {
+      "meta": 5.0,
+      "atencao": 6.0
+    },
+    "RR": {
+      "meta": 5.0,
+      "atencao": 6.0
+    },
+    "TO": {
+      "meta": 6.02,
+      "atencao": 7.02
+    },
+    "AL": {
+      "meta": 5.0,
+      "atencao": 6.0
+    },
+    "BA": {
+      "meta": 4.96,
+      "atencao": 5.96
+    },
+    "CE": {
+      "meta": 7.26,
+      "atencao": 8.26
+    },
+    "MA": {
+      "meta": 4.53,
+      "atencao": 5.53
+    },
+    "PB": {
+      "meta": 5.7,
+      "atencao": 6.7
+    },
+    "PE": {
+      "meta": 5.45,
+      "atencao": 6.45
+    },
+    "PI": {
+      "meta": 5.83,
+      "atencao": 6.83
+    },
+    "RN": {
+      "meta": 4.5,
+      "atencao": 5.5
+    },
+    "SE": {
+      "meta": 7.64,
+      "atencao": 8.64
+    },
+    "DF": {
+      "meta": 5.0,
+      "atencao": 6.0
+    },
+    "GO": {
+      "meta": 4.3,
+      "atencao": 5.3
+    },
+    "MT": {
+      "meta": 4.56,
+      "atencao": 5.56
+    },
+    "MS": {
+      "meta": 6.0,
+      "atencao": 7.0
+    },
+    "ES": {
+      "meta": 4.45,
+      "atencao": 5.54
+    },
+    "MG": {
+      "meta": 3.74,
+      "atencao": 4.74
+    },
+    "RJ": {
+      "meta": 3.75,
+      "atencao": 4.75
+    },
+    "SP": {
+      "meta": 5.0,
+      "atencao": 6.0
+    },
+    "PR": {
+      "meta": 5.46,
+      "atencao": 6.46
+    },
+    "RS": {
+      "meta": 5.42,
+      "atencao": 6.42
+    },
+    "SC": {
+      "meta": 7.78,
+      "atencao": 8.78
+    }
+  }
+}

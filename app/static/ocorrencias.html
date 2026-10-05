@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mapa de Ocorrências — LogHub</title>
+<link rel="stylesheet" href="/static/volix.css" />
+<style>
+  /* Volix (tokens + menu lateral + cabeçalho) vem de /static/volix.css.
+     Aqui só o CSS específico do Mapa de Ocorrências + overrides desta tela. */
+  header p { max-width: 780px; }
+
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 20px; }
+  .panel h2 { margin: 0 0 14px; font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  label.inline { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  select { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 6px 8px; font-size: 12px; }
+  button, a.btn { background: var(--accent); color: #fff; border: none; padding: 9px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; text-decoration: none; display: inline-block; }
+  button:hover, a.btn:hover { opacity: .9; }
+  button.secondary, a.btn.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  button.mini { padding: 4px 10px; font-size: 11px; }
+  label.chk { font-size: 12px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .kpi { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .kpi .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+  .kpi .val { font-size: 26px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .kpi .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .kpi.hero { border-width: 2px; }
+  .kpi.clic { cursor: pointer; transition: box-shadow .12s, transform .06s; }
+  .kpi.clic:hover { box-shadow: 0 0 0 1px var(--muted); }
+  .kpi.clic:active { transform: translateY(1px); }
+  .kpi.clic::after { content: '⤵'; float: right; font-size: 12px; color: var(--muted); margin-top: -10px; opacity: .6; }
+  .kpi.sel { border-color: var(--accent) !important; box-shadow: inset 0 0 0 2px var(--accent); }
+  .kpi.sel::after { content: '✕'; color: var(--accent); opacity: 1; }
+  .band-verde { color: var(--ok); } .band-amarelo { color: var(--warn); } .band-vermelho { color: var(--bad); }
+  .bd-verde { border-color: var(--ok) !important; } .bd-amarelo { border-color: var(--warn) !important; } .bd-vermelho { border-color: var(--bad) !important; }
+
+  .bandpills { display:flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; align-items:center; }
+  .pill { display:inline-flex; align-items:center; gap:6px; font-size:12px; background: var(--bg); border:1px solid var(--border); border-radius: 20px; padding: 5px 12px; cursor: pointer; transition: border-color .12s, background .12s; user-select:none; }
+  .pill:hover { border-color: var(--muted); }
+  .pill.active { background: rgba(59,130,246,.14); border-color: var(--accent); }
+  .pill.filtro-off { cursor: default; color: var(--muted); background: transparent; border: none; padding-left: 0; }
+  .pill.filtro-off:hover { border: none; }
+  .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+  .card .card-head { display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px; gap: 10px; flex-wrap: wrap; }
+  .card h3 { margin: 0; font-size: 13px; color: var(--text); }
+  .card .hint { font-size: 11px; color: var(--muted); }
+  svg.chart { width: 100%; height: auto; display: block; }
+
+  .legend { display:flex; flex-direction: column; gap: 4px; font-size: 12px; }
+  .legend .li { display:flex; align-items:center; gap:8px; justify-content: space-between; padding: 3px 6px; border-radius: 5px; border: 1px solid transparent; }
+  .legend .li.clic { cursor: pointer; }
+  .legend .li.clic:hover { background: rgba(255,255,255,.04); }
+  .legend .li.sel { border-color: var(--accent); background: rgba(59,130,246,.12); font-weight: 600; }
+  .legend .li .nm { display:flex; align-items:center; gap:8px; }
+  .donut-wrap { display:flex; gap: 18px; align-items:center; flex-wrap: wrap; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 10px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: rgba(255,255,255,.03); }
+  tbody tr.linha-foco { background: rgba(59,130,246,.12); box-shadow: inset 3px 0 0 var(--accent); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .sit { display:inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .sit.verde { background: var(--ok-bg); color: var(--ok); }
+  .sit.amarelo { background: var(--warn-bg); color: var(--warn); }
+  .sit.vermelho { background: var(--bad-bg); color: var(--bad); }
+  .sit.none { background: var(--spot-bg); color: var(--spot); }
+  .cattag { display:inline-block; padding: 1px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+
+  .empty { color: var(--muted); font-size: 13px; padding: 30px 0; text-align: center; }
+  #tip { position: fixed; z-index: 80; display: none; background: #0b0f17; border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-size: 12px; pointer-events: none; box-shadow: 0 6px 20px rgba(0,0,0,.4); max-width: 260px; }
+  #tip b { color: #fff; }
+
+  /* Editor de metas por categoria */
+  .modal-back { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: flex-start; justify-content: center; z-index: 100; overflow: auto; padding: 40px 16px; }
+  .modal-back.open { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; width: min(560px, 100%); box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+  .modal h3 { margin: 0 0 6px; font-size: 16px; }
+  .modal .muted { color: var(--muted); font-size: 12px; line-height: 1.5; }
+  .metas-grid { display: grid; grid-template-columns: 1fr 90px 90px; gap: 9px 12px; align-items: center; margin-top: 16px; }
+  .metas-grid .hd { font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: .03em; }
+  .metas-grid .hd.num, .metas-grid input { text-align: right; }
+  .metas-grid .nm { font-size: 13px; }
+  .metas-grid input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 6px 6px; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <img class="brand-iso" width="42" height="42" src="/static/volix-selo-grafite.svg" alt="Volix">
+    <div class="volix">Log<b>H</b>ub</div>
+    <div class="glow"></div>
+    <div class="tag">Sua logística <b>num só lugar</b></div>
+  </div>
+  <nav class="side-nav">
+    <a href="/home">🏠 Início</a>
+    <div class="sec">Financeiro</div>
+    <a href="/audit">📋 Auditoria de CTe</a>
+    <a href="/percent-nf">💰 Frete sobre Faturamento</a>
+    <a href="/conferencia">🧾 Conferência de Fatura</a>
+    <div class="sec">Suprimentos</div>
+    <a href="/coletas">🚚 Coleta em Fornecedores</a>
+    <div class="sec">Expedição</div>
+    <a href="/romaneio">📦 Romaneio de Expedição</a>
+    <div class="sec">Entregas</div>
+    <a href="/tracking">🗼 Torre de Controle</a>
+    <a href="/relatorio-dia">📨 Relatório do Dia</a>
+    <a href="/scorecard">🏆 Scorecard de Desempenho</a>
+    <a href="/ocorrencias" class="active">🗺️ Mapa de Ocorrências</a>
+    <div class="sec">Comercial</div>    <a href="/vendas">📈 Análise de Vendas</a>
+    <div class="sec">Configuração</div>
+    <a href="/cadastro">🗂️ Cadastro de Tabelas</a>
+  </nav>
+</aside>
+
+<header>
+  <img class="vmark vmark-dark" width="40" height="40" src="/static/volix-selo-grafite.svg" alt="Volix"><img class="vmark vmark-light" width="40" height="40" src="/static/volix-selo-principal.svg" alt="Volix">
+  <h1>Mapa de Ocorrências</h1>
+  <p>Mapa de Ocorrências — a lente de <b>não-conformidade</b> sobre as entregas: onde (estado) e com quem (transportadora) concentram-se sinistros, devoluções e tentativas frustradas, e <b>quanto custam</b>. Taxa de ocorrência = entregas afetadas ÷ entregas. Quanto <b>menor</b>, melhor — <span class="band-verde">no alvo</span>, <span class="band-amarelo">atenção</span>, <span class="band-vermelho">crítico</span>.</p>
+</header>
+
+<main>
+
+  <div class="panel">
+    <div class="row" style="justify-content: space-between;">
+      <div class="row">
+        <label class="inline">Mês
+          <select id="mesFilter"><option value="">Todos</option></select>
+        </label>
+        <button class="secondary" id="refreshBtn" type="button">Atualizar</button>
+        <button class="secondary" id="metasBtn" type="button">⚙ Metas por categoria</button>
+        <span class="pill" id="ufChip" style="display:none;"></span>
+      </div>
+      <a class="btn" id="exportBtn" href="/api/ocorrencias/export.xlsx">📄 Exportar Excel</a>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Resumo — não-conformidade nas entregas</h2>
+    <div class="kpis" id="kpis"></div>
+    <div class="bandpills" id="bandpills"></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-head">
+        <h3 id="barrasTitle">Taxa de ocorrência por transportadora</h3>
+        <div class="row">
+          <span class="hint" id="barrasHint">👆 clique numa barra p/ focar a transportadora</span>
+          <button class="secondary mini" id="voltarFoco" type="button" style="display:none;">↩ visão geral</button>
+          <button class="secondary mini" data-png="barras" type="button">PNG</button>
+        </div>
+      </div>
+      <svg class="chart" id="chartBarras"></svg>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <h3 id="donutTitle">Ocorrências por categoria</h3>
+        <div class="row">
+          <label class="chk"><input type="checkbox" id="verInfo" /> incluir informativas</label>
+          <button class="secondary mini" data-png="donut" type="button">PNG</button>
+        </div>
+      </div>
+      <div class="donut-wrap">
+        <svg class="chart" id="chartDonut" style="max-width:220px;"></svg>
+        <div class="legend" id="donutLegend" style="flex:1;min-width:180px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px;">
+    <div class="card-head">
+      <h3 id="mapaTitle">Taxa de ocorrência por região</h3>
+      <div class="row">
+        <button class="secondary mini" id="voltarRegioes" type="button" style="display:none;">← Regiões</button>
+        <span class="hint" id="mapaHint">👆 clique numa região p/ ver os estados</span>
+        <button class="secondary mini" data-png="mapa" type="button">PNG</button>
+      </div>
+    </div>
+    <div class="donut-wrap" style="align-items:flex-start;">
+      <svg class="chart" id="chartMapa" style="max-width:380px;"></svg>
+      <div class="legend" id="mapaRank" style="flex:1;min-width:200px;"></div>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-top:20px;">
+    <div class="card">
+      <div class="card-head">
+        <h3 id="linhaTitle">Evolução mensal da taxa de ocorrência</h3>
+        <div class="row">
+          <span class="hint" id="linhaHint">👆 clique num mês p/ filtrar</span>
+          <button class="secondary mini" data-png="linha" type="button">PNG</button>
+        </div>
+      </div>
+      <svg class="chart" id="chartLinha"></svg>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <h3>Motivos mais frequentes</h3>
+        <span class="hint">código de ocorrência (só não-conformidade)</span>
+      </div>
+      <div class="legend" id="motivos" style="max-height:280px;overflow-y:auto;"></div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
+    <h2>Detalhe por transportadora</h2>
+    <div style="overflow-x:auto;">
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Transportadora</th>
+            <th class="num">Taxa ocorr.</th>
+            <th>Situação</th>
+            <th class="num">Sinistro</th>
+            <th class="num">Devolução</th>
+            <th class="num">Tent. frustr.</th>
+            <th class="num">Entregas</th>
+            <th class="num">Afetadas</th>
+            <th class="num">Ocorr.</th>
+            <th class="num">R$ sob risco</th>
+          </tr>
+        </thead>
+        <tbody id="tblBody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="emptyMsg" style="display:none;">Nenhuma entrega auditada ainda. Alimente a <a href="/tracking" style="color:var(--accent);">Torre de Controle</a> (EDI OCOREN) e a <a href="/audit" style="color:var(--accent);">Auditoria</a> para o mapa ganhar dados.</div>
+  </div>
+
+</main>
+
+<div id="tip"></div>
+
+<!-- Editor de metas por categoria -->
+<div class="modal-back" id="metasModal">
+  <div class="modal">
+    <h3>Metas de ocorrência por categoria</h3>
+    <div class="muted">Alvo (verde) e limite de atenção (amarelo) da <b>taxa de ocorrência</b> — % de entregas afetadas. Menor é melhor. Cada categoria tem sua meta; sinistro costuma ser a mais rígida. Estes são pontos de partida — calibre conforme seu histórico.</div>
+    <div class="metas-grid" id="metasBody"></div>
+    <div class="modal-actions">
+      <button class="secondary" id="metasCancelar" type="button">Cancelar</button>
+      <button id="metasSalvar" type="button">Salvar metas</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const SVGNS = 'http://www.w3.org/2000/svg';
+const COR = { ok:'#22c55e', warn:'#f59e0b', bad:'#ef4444', spot:'#64748b', accent:'#3b82f6',
+              muted:'#8b93a7', border:'#2a3244', bg:'#0f1420', text:'#e6e9f0' };
+const CAT_COR = { SINISTRO:'#ef4444', DEVOLUCAO:'#f59e0b', TENTATIVA_FRUSTRADA:'#a855f7',
+                  EM_TRANSITO:'#3b82f6', ENTREGUE:'#22c55e', OUTROS:'#64748b' };
+const CAT_NOME = { SINISTRO:'Sinistro', DEVOLUCAO:'Devolução', TENTATIVA_FRUSTRADA:'Tentativa frustrada',
+                   EM_TRANSITO:'Em trânsito', ENTREGUE:'Entregue', OUTROS:'Outros' };
+const PROBLEMA = ['SINISTRO','DEVOLUCAO','TENTATIVA_FRUSTRADA'];
+const INFO = ['EM_TRANSITO','ENTREGUE','OUTROS'];
+// De-para categoria problemática → chave de meta no backend.
+const CAT_META = { SINISTRO:'sinistro', DEVOLUCAO:'devolucao', TENTATIVA_FRUSTRADA:'tentativa_frustrada' };
+
+let METAS = null;         // { taxa_ocorrencia:{meta,atencao}, sinistro:{...}, ... }
+let DADOS = null;
+let filtroBanda = null;   // 'verde' | 'amarelo' | 'vermelho' | null (banda da taxa geral)
+let transpSel = null;     // transportadora em foco
+let catSel = null;        // categoria em foco (SINISTRO/DEVOLUCAO/TENTATIVA_FRUSTRADA) → barras/mapa mudam de métrica
+let ufSel = null;         // UF selecionada no mapa → filtra o painel
+let regiaoSel = null;     // região aberta no mapa
+let verInfo = false;      // mostrar categorias informativas no donut
+
+const REGIOES = {
+  'Norte':        ['AC','AP','AM','PA','RO','RR','TO'],
+  'Nordeste':     ['AL','BA','CE','MA','PB','PE','PI','RN','SE'],
+  'Centro-Oeste': ['DF','GO','MT','MS'],
+  'Sudeste':      ['ES','MG','RJ','SP'],
+  'Sul':          ['PR','RS','SC'],
+};
+const REGIAO_BOX = {
+  'Norte':        { x:8,   y:8,   w:206, h:150 },
+  'Nordeste':     { x:222, y:8,   w:130, h:196 },
+  'Centro-Oeste': { x:70,  y:166, w:144, h:104 },
+  'Sudeste':      { x:222, y:212, w:130, h:116 },
+  'Sul':          { x:96,  y:278, w:126, h:94  },
+};
+
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => (
+  { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const fmtInt = (n) => (n ?? 0).toLocaleString('pt-BR');
+const pct = (n) => (n === null || n === undefined) ? '—' : n.toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 }) + '%';
+const pct1 = (n) => (n === null || n === undefined) ? '—' : n.toLocaleString('pt-BR', { maximumFractionDigits:1 }) + '%';
+const money = (n) => 'R$ ' + (n ?? 0).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+function moneyC(n) {
+  n = n ?? 0; const a = Math.abs(n);
+  if (a >= 1e6) return 'R$ ' + (n/1e6).toLocaleString('pt-BR', { maximumFractionDigits:2 }) + ' mi';
+  if (a >= 1e3) return 'R$ ' + (n/1e3).toLocaleString('pt-BR', { maximumFractionDigits:1 }) + ' mil';
+  return 'R$ ' + n.toLocaleString('pt-BR', { maximumFractionDigits:0 });
+}
+
+// ─── Cor/banda por taxa (MENOR é melhor), contra a meta da categoria ativa ──
+function _meta(key) { return (METAS && METAS[key]) || { meta:5, atencao:10 }; }
+function bandTaxa(p, key) {
+  if (p === null || p === undefined) return 'none';
+  const m = _meta(key);
+  return p <= m.meta ? 'verde' : (p <= m.atencao ? 'amarelo' : 'vermelho');
+}
+function corTaxa(p, key) {
+  return { verde:COR.ok, amarelo:COR.warn, vermelho:COR.bad, none:COR.spot }[bandTaxa(p, key)];
+}
+// Métrica ativa: categoria em foco, ou taxa geral (qualquer problema).
+function metaKey() { return catSel ? CAT_META[catSel] : 'taxa_ocorrencia'; }
+function metricaTaxa(item) { return catSel ? item.por_categoria[catSel].taxa : item.taxa; }
+function metricaAfetadas(item) { return catSel ? item.por_categoria[catSel].entregas : item.afetadas; }
+function metricaValor(item) { return catSel ? item.por_categoria[catSel].valor : item.valor_risco; }
+function metricaLabel() { return catSel ? CAT_NOME[catSel] : 'ocorrência'; }
+
+function el(tag, attrs = {}, text = null) {
+  const e = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== null) e.textContent = text;
+  return e;
+}
+function clear(svg) { while (svg.firstChild) svg.removeChild(svg.firstChild); }
+const tip = $('#tip');
+function showTip(html, ev) { tip.innerHTML = html; tip.style.display = 'block'; tip.style.left = (ev.clientX + 14) + 'px'; tip.style.top = (ev.clientY + 14) + 'px'; }
+function hideTip() { tip.style.display = 'none'; }
+
+// ─── Barras horizontais: taxa por transportadora (pior no topo) ─────────────
+function escalaX(vals) {
+  const m = Math.max(0, ...vals.filter(v => v != null));
+  if (m <= 5) return Math.max(1, Math.ceil(m * 1.15));
+  return Math.ceil(m * 1.15 / 5) * 5;
+}
+function renderBarras(svg, lista) {
+  clear(svg);
+  const key = metaKey();
+  const linhas = [...lista].sort((a, b) => (metricaTaxa(b) ?? -1) - (metricaTaxa(a) ?? -1));
+  const L = 150, R = 54, T = 8, B = 30, rowH = 30;
+  const W = 780, plotW = W - L - R;
+  const H = Math.max(60, linhas.length * rowH + T + B);
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const esc = escalaX(linhas.map(metricaTaxa));
+  const x = (v) => L + (Math.max(0, Math.min(esc, v)) / esc) * plotW;
+  const metaV = _meta(key).meta;
+
+  [0, .25, .5, .75, 1].forEach(f => {
+    const v = esc * f;
+    svg.appendChild(el('line', { x1:x(v), y1:T, x2:x(v), y2:H-B, stroke:COR.border, 'stroke-width':1 }));
+    svg.appendChild(el('text', { x:x(v), y:H-B+16, fill:COR.muted, 'font-size':10, 'text-anchor':'middle' }, pct1(v)));
+  });
+
+  linhas.forEach((l, i) => {
+    const y = T + i * rowH, cy = y + rowH / 2;
+    const val = metricaTaxa(l);
+    const foco = l.transportadora === transpSel;
+    if (foco) svg.appendChild(el('rect', { x:0, y:y+1, width:W, height:rowH-2, rx:4, fill:'rgba(59,130,246,.12)', stroke:COR.accent, 'stroke-width':1 }));
+    svg.appendChild(el('text', { x:L-8, y:cy+4, fill:COR.text, 'font-size':12, 'font-weight': foco?700:400, 'text-anchor':'end' },
+      l.transportadora.length > 22 ? l.transportadora.slice(0,21) + '…' : l.transportadora));
+    const c = corTaxa(val, key);
+    svg.appendChild(el('rect', { x:L, y:y+6, width:Math.max(2, x(val)-L), height:rowH-12, rx:3, fill:c, opacity: foco?1:.85 }));
+    if (metaV <= esc) svg.appendChild(el('line', { x1:x(metaV), y1:y+4, x2:x(metaV), y2:y+rowH-4, stroke:'#fff', 'stroke-width':1.5, 'stroke-dasharray':'2 2', opacity:.6 }));
+    svg.appendChild(el('text', { x:x(val)+6, y:cy+4, fill:c, 'font-size':12, 'font-weight':700 }, pct(val)));
+    const hit = el('rect', { x:0, y:y, width:W, height:rowH, fill:'transparent', style:'cursor:pointer' });
+    hit.addEventListener('mousemove', (ev) => showTip(
+      `<b>${escapeHtml(l.transportadora)}</b><br>Taxa de ${escapeHtml(metricaLabel())}: ${pct(val)} · meta ≤ ${pct(metaV)}<br>${fmtInt(metricaAfetadas(l))} de ${fmtInt(l.entregas)} entregas · ${fmtInt(l.ocorrencias)} ocorr.<br>R$ sob risco: ${money(metricaValor(l))}<br><span style="color:#8b93a7">clique p/ focar a transportadora</span>`, ev));
+    hit.addEventListener('mouseleave', hideTip);
+    hit.addEventListener('click', () => selecionarTransp(l.transportadora));
+    svg.appendChild(hit);
+  });
+}
+
+// ─── Donut: distribuição das ocorrências por categoria ─────────────────────
+function catSegments(porCat) {
+  const cats = verInfo ? [...PROBLEMA, ...INFO] : PROBLEMA;
+  return cats.map(c => ({
+    cat: c, label: CAT_NOME[c], valor: (porCat[c] || {}).ocorrencias || 0,
+    entregas: (porCat[c] || {}).entregas || 0, taxa: (porCat[c] || {}).taxa,
+    cor: CAT_COR[c], clic: PROBLEMA.includes(c),
+  })).filter(s => s.valor > 0);
+}
+function renderDonut(svg, legendEl, segs) {
+  clear(svg); legendEl.innerHTML = '';
+  const size = 200, cx = size/2, cy = size/2, rOut = 90, rIn = 54;
+  svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+  const total = segs.reduce((a, s) => a + s.valor, 0);
+  if (!total) { svg.appendChild(el('text', { x:cx, y:cy, fill:COR.muted, 'font-size':12, 'text-anchor':'middle' }, 'sem ocorrências')); return; }
+  let ang = -Math.PI / 2;
+  const arc = (cx, cy, r, a) => [cx + r*Math.cos(a), cy + r*Math.sin(a)];
+  segs.forEach(s => {
+    const frac = s.valor / total, a2 = ang + frac * 2 * Math.PI;
+    const big = (a2 - ang) > Math.PI ? 1 : 0;
+    const [x1,y1] = arc(cx,cy,rOut,ang), [x2,y2] = arc(cx,cy,rOut,a2);
+    const [x3,y3] = arc(cx,cy,rIn,a2), [x4,y4] = arc(cx,cy,rIn,ang);
+    const d = `M${x1} ${y1} A${rOut} ${rOut} 0 ${big} 1 ${x2} ${y2} L${x3} ${y3} A${rIn} ${rIn} 0 ${big} 0 ${x4} ${y4} Z`;
+    const sel = catSel && s.cat === catSel;
+    const p = el('path', { d, fill:s.cor, opacity: sel ? 1 : .9, style:'cursor:' + (s.clic ? 'pointer' : 'default') });
+    if (sel) { p.setAttribute('stroke', '#fff'); p.setAttribute('stroke-width', 2); }
+    const pctv = (frac*100).toLocaleString('pt-BR', {maximumFractionDigits:1});
+    const extra = s.clic ? '<br><span style="color:#8b93a7">clique p/ focar esta categoria</span>' : '';
+    p.addEventListener('mousemove', (ev) => showTip(`<b>${escapeHtml(s.label)}</b><br>${fmtInt(s.valor)} ocorrências · ${pctv}%<br>Taxa: ${pct(s.taxa)} (${fmtInt(s.entregas)} entregas)${extra}`, ev));
+    p.addEventListener('mouseleave', hideTip);
+    if (s.clic) p.addEventListener('click', () => selecionarCategoria(s.cat));
+    svg.appendChild(p);
+    ang = a2;
+    const li = document.createElement('div');
+    li.className = 'li' + (s.clic ? ' clic' : '') + (sel ? ' sel' : '');
+    li.innerHTML = `<span class="nm"><span class="dot" style="background:${s.cor}"></span>${escapeHtml(s.label)}</span><span>${fmtInt(s.valor)} · ${pctv}%</span>`;
+    if (s.clic) li.addEventListener('click', () => selecionarCategoria(s.cat));
+    legendEl.appendChild(li);
+  });
+  svg.appendChild(el('text', { x:cx, y:cy-6, fill:COR.text, 'font-size':17, 'font-weight':700, 'text-anchor':'middle' }, fmtInt(total)));
+  svg.appendChild(el('text', { x:cx, y:cy+12, fill:COR.muted, 'font-size':11, 'text-anchor':'middle' }, 'ocorrências'));
+}
+function selecionarCategoria(cat) {
+  catSel = (catSel === cat) ? null : cat;
+  transpSel = null;
+  renderMapa($('#chartMapa'), $('#mapaRank'), DADOS.por_estado);
+  renderPainel();
+}
+function selecionarTransp(nome) {
+  transpSel = (transpSel === nome) ? null : nome;
+  renderPainel();
+}
+
+// ─── Linha: evolução mensal da taxa (geral ou transportadora em foco) ──────
+function renderLinha(svg, serie, clicavelMes = false) {
+  clear(svg);
+  const L = 44, R = 20, T = 14, B = 34;
+  const W = 780, plotW = W - L - R, H = 260, plotH = H - T - B;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const pts = serie.filter(s => s.taxa !== null && s.taxa !== undefined);
+  const esc = escalaX(serie.map(s => s.taxa));
+  const y = (v) => T + (1 - Math.max(0, Math.min(esc, v)) / esc) * plotH;
+  const n = serie.length;
+  const x = (i) => n <= 1 ? L + plotW/2 : L + (i / (n - 1)) * plotW;
+
+  [0, .25, .5, .75, 1].forEach(f => {
+    const v = esc * f;
+    svg.appendChild(el('line', { x1:L, y1:y(v), x2:W-R, y2:y(v), stroke:COR.border, 'stroke-width':1 }));
+    svg.appendChild(el('text', { x:L-6, y:y(v)+3, fill:COR.muted, 'font-size':10, 'text-anchor':'end' }, pct1(v)));
+  });
+  if (!pts.length) { svg.appendChild(el('text', { x:W/2, y:H/2, fill:COR.muted, 'font-size':12, 'text-anchor':'middle' }, 'sem entregas no período')); return; }
+
+  serie.forEach((s, i) => svg.appendChild(el('text', { x:x(i), y:H-14, fill:COR.muted, 'font-size':10, 'text-anchor':'middle' }, s.mes.slice(2))));
+  const path = pts.map((s) => `${x(serie.indexOf(s))},${y(s.taxa)}`).join(' ');
+  svg.appendChild(el('polyline', { points:path, fill:'none', stroke:COR.accent, 'stroke-width':2 }));
+  serie.forEach((s, i) => {
+    if (s.taxa === null || s.taxa === undefined) return;
+    const c = corTaxa(s.taxa, 'taxa_ocorrencia');
+    const raio = clicavelMes ? 7 : 5;
+    const dot = el('circle', { cx:x(i), cy:y(s.taxa), r:raio, fill:c, stroke:COR.bg, 'stroke-width':1.5, style:'cursor:' + (clicavelMes ? 'pointer' : 'default') });
+    const extra = clicavelMes ? '<br><span style="color:#8b93a7">clique p/ filtrar este mês</span>' : '';
+    dot.addEventListener('mousemove', (ev) => showTip(`<b>${s.mes}</b><br>Taxa: ${pct(s.taxa)} · ${fmtInt(s.afetadas)}/${fmtInt(s.entregas)} entregas<br>${fmtInt(s.ocorrencias)} ocorr. · ${moneyC(s.valor_risco)} sob risco${extra}`, ev));
+    dot.addEventListener('mouseleave', hideTip);
+    if (clicavelMes) dot.addEventListener('click', () => { hideTip(); $('#mesFilter').value = s.mes; load(); });
+    svg.appendChild(dot);
+  });
+}
+
+// ─── Mapa: taxa por região do Brasil (drill p/ estados) ────────────────────
+function regiaoDeUf(uf) {
+  return Object.keys(REGIOES).find(r => REGIOES[r].includes(uf)) || null;
+}
+function agregaEstados(dados, ufs) {
+  let num = 0, den = 0, valor = 0, n = 0;
+  ufs.forEach(uf => {
+    const d = dados[uf]; if (!d) return;
+    den += d.entregas;
+    num += catSel ? d.por_categoria[catSel].entregas : d.afetadas;
+    valor += catSel ? d.por_categoria[catSel].valor : d.valor_risco;
+    n++;
+  });
+  return { taxa: den ? Math.round(num / den * 10000) / 100 : null, entregas: den, afetadas: num, valor, estados: n };
+}
+function _tileRank(rankEl, itens, onClick) {
+  rankEl.innerHTML = '';
+  if (!itens.length) { rankEl.innerHTML = '<div class="hint">Sem entregas no período.</div>'; return; }
+  const key = metaKey();
+  itens.forEach(it => {
+    const li = document.createElement('div');
+    li.className = 'li clic' + (it.sel ? ' sel' : '');
+    li.innerHTML = `<span class="nm"><span class="dot" style="background:${corTaxa(it.taxa, key)}"></span><b>${escapeHtml(it.nome)}</b> · ${fmtInt(it.entregas)} entr.</span><span class="band-${bandTaxa(it.taxa, key)}">${pct(it.taxa)}</span>`;
+    li.addEventListener('click', () => onClick(it.nome));
+    rankEl.appendChild(li);
+  });
+}
+function renderMapa(svg, rankEl, porEstado) {
+  const dados = {}; porEstado.forEach(e => dados[e.uf] = e);
+  const suf = catSel ? ' — ' + CAT_NOME[catSel] : '';
+  $('#mapaTitle').textContent = (regiaoSel ? 'Taxa — ' + regiaoSel : 'Taxa de ocorrência por região') + suf;
+  $('#mapaHint').textContent = regiaoSel ? '👆 clique num estado p/ filtrar o painel' : '👆 clique numa região p/ ver os estados';
+  $('#voltarRegioes').style.display = regiaoSel ? 'inline-block' : 'none';
+  if (regiaoSel) renderEstados(svg, rankEl, regiaoSel, dados);
+  else renderRegioes(svg, rankEl, dados);
+}
+function _bloco(svg, x, y, w, h, cor, temDados, sel, nome, valor, sub, fsNome, fsVal) {
+  svg.appendChild(el('rect', { x, y, width:w, height:h, rx:9, fill: temDados ? cor : '#243044',
+    'fill-opacity': temDados ? .17 : .35, stroke: sel ? '#fff' : (temDados ? cor : COR.border), 'stroke-width': sel ? 2.5 : 1.5 }));
+  svg.appendChild(el('text', { x:x+w/2, y:y+h/2-10, fill:COR.text, 'font-size':fsNome, 'font-weight':600, 'text-anchor':'middle' }, nome));
+  svg.appendChild(el('text', { x:x+w/2, y:y+h/2+14, fill: temDados ? cor : COR.spot, 'font-size':fsVal, 'font-weight':800, 'text-anchor':'middle' }, temDados ? pct(valor) : '—'));
+  if (sub) svg.appendChild(el('text', { x:x+w/2, y:y+h-10, fill:COR.muted, 'font-size':10, 'text-anchor':'middle' }, sub));
+}
+function renderRegioes(svg, rankEl, dados) {
+  clear(svg);
+  svg.setAttribute('viewBox', '0 0 360 380');
+  const key = metaKey();
+  const itens = [];
+  Object.entries(REGIAO_BOX).forEach(([reg, b]) => {
+    const a = agregaEstados(dados, REGIOES[reg]);
+    const temDados = a.entregas > 0;
+    _bloco(svg, b.x, b.y, b.w, b.h, corTaxa(a.taxa, key), temDados, false, reg, a.taxa,
+           temDados ? `${fmtInt(a.entregas)} entr. · ${fmtInt(a.afetadas)} afet.` : 'sem entregas', 15, 22);
+    const hit = el('rect', { x:b.x, y:b.y, width:b.w, height:b.h, rx:9, fill:'transparent', style:'cursor:pointer' });
+    hit.addEventListener('mousemove', (ev) => showTip(
+      `<b>${reg}</b> — Taxa ${pct(a.taxa)} · meta ≤ ${pct(_meta(key).meta)}<br>${fmtInt(a.afetadas)} de ${fmtInt(a.entregas)} entregas<br>R$ sob risco: ${money(a.valor)}<br><span style="color:#8b93a7">clique p/ ver os estados</span>`, ev));
+    hit.addEventListener('mouseleave', hideTip);
+    hit.addEventListener('click', () => selecionarRegiao(reg));
+    svg.appendChild(hit);
+    if (temDados) itens.push({ nome:reg, taxa:a.taxa, entregas:a.entregas });
+  });
+  itens.sort((x, y) => (y.taxa ?? -1) - (x.taxa ?? -1));
+  _tileRank(rankEl, itens, selecionarRegiao);
+}
+function renderEstados(svg, rankEl, reg, dados) {
+  clear(svg);
+  const key = metaKey();
+  const ufs = REGIOES[reg];
+  const cols = 3, tw = 108, th = 66, gx = 118, gy = 78, x0 = 8, y0 = 8;
+  const nrows = Math.ceil(ufs.length / cols);
+  const W = 360, H = nrows * gy + y0;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const itens = [];
+  ufs.forEach((uf, i) => {
+    const c = i % cols, r = Math.floor(i / cols);
+    const x = x0 + c * gx, y = y0 + r * gy;
+    const d = dados[uf];
+    const temDados = !!d && d.entregas > 0;
+    const sel = ufSel === uf;
+    const val = temDados ? metricaTaxa(d) : null;
+    _bloco(svg, x, y, tw, th, corTaxa(val, key), temDados, sel, uf,
+           val, temDados ? `${fmtInt(d.entregas)} entr.` : 'sem entregas', 15, 20);
+    if (temDados) {
+      const hit = el('rect', { x, y, width:tw, height:th, rx:9, fill:'transparent', style:'cursor:pointer' });
+      hit.addEventListener('mousemove', (ev) => showTip(
+        `<b>${uf}</b> — Taxa ${pct(val)} · meta ≤ ${pct(_meta(key).meta)}<br>${fmtInt(metricaAfetadas(d))} de ${fmtInt(d.entregas)} entregas<br>R$ sob risco: ${money(metricaValor(d))}<br><span style="color:#8b93a7">clique p/ filtrar este estado</span>`, ev));
+      hit.addEventListener('mouseleave', hideTip);
+      hit.addEventListener('click', () => selecionarUf(uf));
+      svg.appendChild(hit);
+      itens.push({ nome:uf, taxa:val, entregas:d.entregas, sel });
+    }
+  });
+  itens.sort((a, b) => (b.taxa ?? -1) - (a.taxa ?? -1));
+  _tileRank(rankEl, itens, selecionarUf);
+}
+function selecionarRegiao(reg) {
+  regiaoSel = (regiaoSel === reg) ? null : reg;
+  renderMapa($('#chartMapa'), $('#mapaRank'), DADOS.por_estado);
+}
+function selecionarUf(uf) {
+  ufSel = (ufSel === uf) ? null : uf;
+  if (ufSel) regiaoSel = regiaoDeUf(uf);
+  load();
+}
+$('#voltarRegioes').addEventListener('click', () => { regiaoSel = null; renderMapa($('#chartMapa'), $('#mapaRank'), DADOS.por_estado); });
+
+// ─── Motivos mais frequentes ───────────────────────────────────────────────
+function renderMotivos(motivos) {
+  const box = $('#motivos'); box.innerHTML = '';
+  if (!motivos.length) { box.innerHTML = '<div class="hint">Nenhuma ocorrência de não-conformidade no período.</div>'; return; }
+  const max = Math.max(...motivos.map(m => m.ocorrencias));
+  motivos.forEach(m => {
+    const li = document.createElement('div');
+    li.className = 'li';
+    const w = Math.round((m.ocorrencias / max) * 100);
+    li.innerHTML = `<span class="nm"><span class="cattag" style="background:${CAT_COR[m.categoria]}22;color:${CAT_COR[m.categoria]}">${escapeHtml((m.codigo||'').padStart(2,'0'))}</span>`
+      + `<span title="${escapeHtml(m.descricao)}">${escapeHtml(m.descricao.length>44?m.descricao.slice(0,43)+'…':m.descricao)}</span></span>`
+      + `<span style="display:flex;align-items:center;gap:8px;"><span style="display:inline-block;width:${w}px;max-width:80px;height:6px;border-radius:3px;background:${CAT_COR[m.categoria]}"></span><b>${fmtInt(m.ocorrencias)}</b></span>`;
+    box.appendChild(li);
+  });
+}
+
+// ─── Render principal ──────────────────────────────────────────────────────
+function renderKpis(r) {
+  const band = bandTaxa(r.taxa, 'taxa_ocorrencia');
+  const bandS = bandTaxa(r.taxa_sinistro, 'sinistro');
+  const bandD = bandTaxa(r.taxa_devolucao, 'devolucao');
+  $('#kpis').innerHTML = `
+    <div class="kpi hero bd-${band} clic" data-band="${band}" data-role="hero" title="Taxa de ocorrência = entregas afetadas por não-conformidade ÷ entregas totais. Menor é melhor. Clique p/ filtrar as transportadoras nesta faixa.">
+      <div class="label">Taxa de ocorrência</div>
+      <div class="val band-${band}">${pct(r.taxa)}</div>
+      <div class="sub">meta ≤ ${pct(_meta('taxa_ocorrencia').meta)} · ${fmtInt(r.afetadas)} de ${fmtInt(r.entregas)} entregas</div>
+    </div>
+    <div class="kpi hero bd-vermelho"><div class="label">R$ sob risco</div><div class="val">${moneyC(r.valor_risco)}</div><div class="sub">carga das ${fmtInt(r.afetadas)} entregas afetadas</div></div>
+    <div class="kpi clic" data-cat="SINISTRO" title="% de entregas com sinistro (extravio/avaria/roubo). Clique p/ focar sinistros."><div class="label">Taxa de sinistro</div><div class="val band-${bandS}">${pct(r.taxa_sinistro)}</div><div class="sub">meta ≤ ${pct(_meta('sinistro').meta)} · ${fmtInt(r.por_categoria.SINISTRO.entregas)} entregas</div></div>
+    <div class="kpi clic" data-cat="DEVOLUCAO" title="% de entregas com devolução. Clique p/ focar devoluções."><div class="label">Taxa de devolução</div><div class="val band-${bandD}">${pct(r.taxa_devolucao)}</div><div class="sub">meta ≤ ${pct(_meta('devolucao').meta)} · ${fmtInt(r.por_categoria.DEVOLUCAO.entregas)} entregas</div></div>
+    <div class="kpi"><div class="label">Entregas afetadas</div><div class="val">${fmtInt(r.afetadas)}</div><div class="sub">${fmtInt(r.ocorrencias)} ocorrências problemáticas</div></div>
+    <div class="kpi"><div class="label">Transportadoras</div><div class="val">${fmtInt(r.transportadoras)}</div><div class="sub">${fmtInt(r.no_alvo)} no alvo · ${fmtInt(r.criticas)} críticas</div></div>`;
+  const semV = r.sem_vinculo
+    ? `<span class="pill filtro-off" title="Ocorrências do EDI que ainda não casaram com um CTe auditado — ficam fora do mapa até o CTe entrar na Auditoria.">⚠ ${fmtInt(r.sem_vinculo)} ocorrências sem vínculo</span>` : '';
+  $('#bandpills').innerHTML = `
+    <span class="pill" data-band="verde"><span class="dot" style="background:${COR.ok}"></span><b>${fmtInt(r.no_alvo)}</b>&nbsp;no alvo</span>
+    <span class="pill" data-band="amarelo"><span class="dot" style="background:${COR.warn}"></span><b>${fmtInt(r.em_atencao)}</b>&nbsp;em atenção</span>
+    <span class="pill" data-band="vermelho"><span class="dot" style="background:${COR.bad}"></span><b>${fmtInt(r.criticas)}</b>&nbsp;críticas</span>
+    <span class="pill filtro-off">vs. meta da taxa de ocorrência (⚙ ajustável)</span>
+    ${semV}
+    <span class="pill filtro-off" id="limparBanda" style="display:none;">✕ limpar filtro</span>`;
+  document.querySelectorAll('#bandpills .pill[data-band]').forEach(p =>
+    p.addEventListener('click', () => setBanda(p.dataset.band)));
+  $('#limparBanda').addEventListener('click', () => setBanda(null));
+  const hero = $('#kpis .kpi[data-role="hero"]');
+  if (hero && band !== 'none') hero.addEventListener('click', () => setBanda(band));
+  document.querySelectorAll('#kpis .kpi[data-cat]').forEach(k =>
+    k.addEventListener('click', () => selecionarCategoria(k.dataset.cat)));
+}
+
+function setBanda(b) {
+  filtroBanda = (b === null || filtroBanda === b) ? null : b;
+  transpSel = null;
+  renderPainel();
+}
+function listaFiltrada() {
+  let lista = DADOS.por_transportadora;
+  if (filtroBanda) lista = lista.filter(l => bandTaxa(l.taxa, 'taxa_ocorrencia') === filtroBanda);
+  return lista;
+}
+function renderPainel() {
+  const carrier = transpSel ? DADOS.por_transportadora.find(t => t.transportadora === transpSel) : null;
+  const lista = listaFiltrada();
+  const catSuf = catSel ? ' — ' + CAT_NOME[catSel] : '';
+
+  $('#barrasTitle').textContent = 'Taxa de ' + metricaLabel() + ' por transportadora' + (filtroBanda ? ' · ' + {verde:'no alvo',amarelo:'atenção',vermelho:'críticas'}[filtroBanda] : '');
+  $('#barrasHint').textContent = carrier ? `focada: ${transpSel}` : (catSel ? 'foco: ' + CAT_NOME[catSel] + ' · traço branco = meta' : '👆 barra: taxa · traço branco = meta');
+  renderBarras($('#chartBarras'), lista);
+  renderTable(lista);
+  $('#voltarFoco').style.display = (transpSel || filtroBanda || catSel) ? 'inline-block' : 'none';
+
+  $('#donutTitle').textContent = 'Ocorrências por categoria' + catSuf;
+  renderDonut($('#chartDonut'), $('#donutLegend'), catSegments(DADOS.resumo.por_categoria));
+
+  $('#linhaTitle').textContent = 'Evolução mensal da taxa de ocorrência' + (carrier ? ' — ' + transpSel : '');
+  $('#linhaHint').textContent = carrier ? 'evolução da transportadora em foco' : '👆 clique num mês p/ filtrar';
+  renderLinha($('#chartLinha'), carrier ? carrier.serie : DADOS.serie_mensal, !carrier);
+
+  renderMotivos(DADOS.top_motivos || []);
+
+  document.querySelectorAll('#bandpills .pill[data-band]').forEach(p =>
+    p.classList.toggle('active', p.dataset.band === filtroBanda));
+  const hero = $('#kpis .kpi[data-role="hero"]');
+  if (hero) hero.classList.toggle('sel', !!filtroBanda && hero.dataset.band === filtroBanda);
+  document.querySelectorAll('#kpis .kpi[data-cat]').forEach(k =>
+    k.classList.toggle('sel', k.dataset.cat === catSel));
+  const limpar = $('#limparBanda');
+  if (limpar) limpar.style.display = filtroBanda ? 'inline' : 'none';
+}
+
+function renderTable(linhas) {
+  const body = $('#tblBody'); body.innerHTML = '';
+  if (!linhas.length) { $('#emptyMsg').style.display = 'block'; $('#tbl').style.display = 'none'; return; }
+  $('#emptyMsg').style.display = 'none'; $('#tbl').style.display = '';
+  const sitLabel = { verde:'No alvo', amarelo:'Atenção', vermelho:'Crítico', none:'—' };
+  linhas.forEach((l, i) => {
+    const band = bandTaxa(l.taxa, 'taxa_ocorrencia');
+    const pc = l.por_categoria;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="num" style="color:var(--muted)">${i + 1}</td>
+      <td>${escapeHtml(l.transportadora)}</td>
+      <td class="num band-${band}"><b>${pct(l.taxa)}</b></td>
+      <td><span class="sit ${band}">${sitLabel[band]}</span></td>
+      <td class="num band-${bandTaxa(l.taxa_sinistro,'sinistro')}">${pct(l.taxa_sinistro)}</td>
+      <td class="num band-${bandTaxa(l.taxa_devolucao,'devolucao')}">${pct(l.taxa_devolucao)}</td>
+      <td class="num band-${bandTaxa(l.taxa_tentativa,'tentativa_frustrada')}">${pct(l.taxa_tentativa)}</td>
+      <td class="num" style="color:var(--muted)">${fmtInt(l.entregas)}</td>
+      <td class="num">${fmtInt(l.afetadas)}</td>
+      <td class="num">${fmtInt(l.ocorrencias)}</td>
+      <td class="num ${l.valor_risco>0?'band-vermelho':''}">${money(l.valor_risco)}</td>`;
+    if (l.transportadora === transpSel) tr.classList.add('linha-foco');
+    tr.addEventListener('click', () => selecionarTransp(l.transportadora));
+    body.appendChild(tr);
+  });
+}
+
+$('#voltarFoco').addEventListener('click', () => { transpSel = null; filtroBanda = null; catSel = null; renderMapa($('#chartMapa'), $('#mapaRank'), DADOS.por_estado); renderPainel(); });
+$('#verInfo').addEventListener('change', (e) => { verInfo = e.target.checked; renderDonut($('#chartDonut'), $('#donutLegend'), catSegments(DADOS.resumo.por_categoria)); });
+
+// ─── Editor de metas por categoria ─────────────────────────────────────────
+const META_LINHAS = [
+  ['taxa_ocorrencia', 'Taxa de ocorrência (qualquer problema)'],
+  ['sinistro', 'Sinistro (extravio/avaria/roubo)'],
+  ['devolucao', 'Devolução'],
+  ['tentativa_frustrada', 'Tentativa frustrada'],
+];
+function _metaRow(container, label, key, meta, atencao) {
+  const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = label;
+  const im = document.createElement('input'); im.type = 'number'; im.step = '0.1'; im.min = '0'; im.value = meta; im.dataset.key = key; im.dataset.field = 'meta';
+  const ia = document.createElement('input'); ia.type = 'number'; ia.step = '0.1'; ia.min = '0'; ia.value = atencao; ia.dataset.key = key; ia.dataset.field = 'atencao';
+  container.appendChild(nm); container.appendChild(im); container.appendChild(ia);
+}
+function abrirMetas() {
+  const box = $('#metasBody'); box.innerHTML = '';
+  const hd1 = document.createElement('div'); hd1.className = 'hd'; hd1.textContent = 'Categoria';
+  const hd2 = document.createElement('div'); hd2.className = 'hd num'; hd2.textContent = 'Alvo ≤%';
+  const hd3 = document.createElement('div'); hd3.className = 'hd num'; hd3.textContent = 'Atenção ≤%';
+  box.appendChild(hd1); box.appendChild(hd2); box.appendChild(hd3);
+  META_LINHAS.forEach(([key, label]) => {
+    const p = METAS[key] || { meta:0, atencao:0 };
+    _metaRow(box, label, key, p.meta, p.atencao);
+  });
+  $('#metasModal').classList.add('open');
+}
+function fecharMetas() { $('#metasModal').classList.remove('open'); }
+async function salvarMetas() {
+  const acc = {};
+  $('#metasBody').querySelectorAll('input[data-key]').forEach(inp => {
+    const k = inp.dataset.key, f = inp.dataset.field;
+    (acc[k] = acc[k] || {})[f] = parseFloat(String(inp.value).replace(',', '.')) || 0;
+  });
+  const btn = $('#metasSalvar'); btn.disabled = true; btn.textContent = 'Salvando…';
+  try {
+    const resp = await fetch('/api/ocorrencias/metas', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(acc),
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    fecharMetas();
+    await load();
+  } catch (e) {
+    alert('Falha ao salvar as metas. Tente novamente.');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Salvar metas';
+  }
+}
+$('#metasBtn').addEventListener('click', abrirMetas);
+$('#metasCancelar').addEventListener('click', fecharMetas);
+$('#metasSalvar').addEventListener('click', salvarMetas);
+$('#metasModal').addEventListener('click', (e) => { if (e.target === $('#metasModal')) fecharMetas(); });
+
+// ─── Exportar gráfico como PNG ─────────────────────────────────────────────
+function svgToPng(svg, filename) {
+  const vb = svg.viewBox.baseVal;
+  const w = vb && vb.width ? vb.width : svg.clientWidth;
+  const h = vb && vb.height ? vb.height : svg.clientHeight;
+  const clone = svg.cloneNode(true);
+  clone.setAttribute('xmlns', SVGNS);
+  clone.setAttribute('width', w); clone.setAttribute('height', h);
+  const xml = new XMLSerializer().serializeToString(clone);
+  const src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(xml)));
+  const img = new Image();
+  img.onload = () => {
+    const scale = 2, c = document.createElement('canvas');
+    c.width = w * scale; c.height = h * scale;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = COR.bg; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.scale(scale, scale); ctx.drawImage(img, 0, 0);
+    c.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = filename; a.click(); URL.revokeObjectURL(a.href); });
+  };
+  img.src = src;
+}
+document.querySelectorAll('[data-png]').forEach(btn => btn.addEventListener('click', () => {
+  const map = { barras:['#chartBarras','ocorrencias_por_transportadora.png'], donut:['#chartDonut','ocorrencias_por_categoria.png'],
+                linha:['#chartLinha','evolucao_ocorrencias.png'], mapa:['#chartMapa','ocorrencias_por_estado.png'] };
+  const [sel, fn] = map[btn.dataset.png];
+  svgToPng($(sel), fn);
+}));
+
+// ─── Carga ─────────────────────────────────────────────────────────────────
+async function loadMeses() {
+  try {
+    const resp = await fetch('/api/ocorrencias/meses');
+    if (!resp.ok) return;
+    const meses = await resp.json();
+    const sel = $('#mesFilter');
+    for (const m of meses) { const o = document.createElement('option'); o.value = m; o.textContent = m; sel.appendChild(o); }
+  } catch (e) { /* servidor fora do ar — segue com o seletor padrão */ }
+}
+async function load() {
+  const mes = $('#mesFilter').value;
+  const qs = new URLSearchParams();
+  if (mes) qs.set('mes', mes);
+  if (ufSel) qs.set('uf', ufSel);
+  const query = qs.toString();
+  let data;
+  try {
+    const resp = await fetch('/api/ocorrencias' + (query ? '?' + query : ''));
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    data = await resp.json();
+  } catch (e) {
+    $('#kpis').innerHTML = '<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--muted);">'
+      + 'Não foi possível carregar o Mapa de Ocorrências. Verifique se o servidor está no ar e clique em <b>Atualizar</b>.</div>';
+    return;
+  }
+  DADOS = data; METAS = data.metas;
+  filtroBanda = null; transpSel = null; catSel = null;
+  $('#exportBtn').href = '/api/ocorrencias/export.xlsx' + (query ? '?' + query : '');
+  const chip = $('#ufChip');
+  if (ufSel) { chip.style.display = 'inline-flex'; chip.innerHTML = `Estado: <b>&nbsp;${ufSel}</b>&nbsp; ✕`; }
+  else chip.style.display = 'none';
+  renderKpis(data.resumo);
+  renderMapa($('#chartMapa'), $('#mapaRank'), data.por_estado);
+  renderPainel();
+}
+$('#ufChip').addEventListener('click', () => { ufSel = null; load(); });
+$('#mesFilter').addEventListener('change', load);
+$('#refreshBtn').addEventListener('click', load);
+
+(async () => { await loadMeses(); await load(); })();
+</script>
+
+<script src="/static/auth.js" defer></script>
+</body>
+</html>

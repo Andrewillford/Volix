@@ -1,0 +1,18 @@
+{
+  "taxa_ocorrencia": {
+    "meta": 5.0,
+    "atencao": 10.0
+  },
+  "sinistro": {
+    "meta": 0.5,
+    "atencao": 1.5
+  },
+  "devolucao": {
+    "meta": 2.0,
+    "atencao": 5.0
+  },
+  "tentativa_frustrada": {
+    "meta": 3.0,
+    "atencao": 7.0
+  }
+}

@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Romaneio de Expedição — LogHub</title>
+<link rel="stylesheet" href="/static/volix.css" />
+<style>
+  header p { max-width: 780px; }
+
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 20px; }
+  .panel h2 { margin: 0 0 14px; font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .spread { justify-content: space-between; }
+  input[type=text], input[type=date], select, textarea {
+    background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 7px 9px; font-size: 13px; font-family: inherit; }
+  button, a.btn { background: var(--accent); color: #fff; border: none; padding: 9px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; text-decoration: none; display: inline-block; }
+  button:hover, a.btn:hover { opacity: .9; }
+  button:disabled { opacity: .5; cursor: default; }
+  button.secondary, a.btn.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  button.mini, a.btn.mini { padding: 5px 11px; font-size: 11px; }
+  button.danger { background: transparent; border: 1px solid var(--bad); color: var(--bad); }
+  button.linkish { background: none; border: none; color: var(--bad); padding: 2px 6px; font-size: 15px; }
+
+  .drops { display:grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 720px){ .drops { grid-template-columns: 1fr; } }
+  .drop { border: 1.5px dashed var(--border); border-radius: 10px; padding: 22px; text-align: center; color: var(--muted); transition: border-color .15s, background .15s; cursor: pointer; }
+  .drop.drag { border-color: var(--accent); background: rgba(139,195,74,.10); color: var(--text); }
+  .drop b { color: var(--text); }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .kpi { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .kpi .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+  .kpi .val { font-size: 24px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .kpi .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .kpi.hero { border-width: 2px; border-color: var(--ok); }
+  .kpi.ok { border-color: var(--ok); }
+  .kpi.wait { border-color: var(--warn); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.wrap, th.wrap { white-space: normal; }
+  tbody tr.clic { cursor: pointer; }
+  tbody tr.clic:hover { background: rgba(255,255,255,.03); }
+  input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color: var(--accent); }
+
+  .st { display:inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .st.aberto { background: var(--spot-bg); color: var(--spot); }
+  .st.liberado { background: rgba(59,130,246,.16); color: var(--accent); }
+  .st.expedido { background: rgba(59,130,246,.16); color: var(--accent); }
+  .st.encerrado { background: var(--ok-bg); color: var(--ok); }
+  .st.cancelado { background: var(--bad-bg); color: var(--bad); }
+  .st.COM_CTE { background: var(--ok-bg); color: var(--ok); }
+  .st.AGUARDANDO { background: var(--warn-bg); color: var(--warn); }
+  .st.ENTREGUE { background: var(--ok-bg); color: var(--ok); }
+  .st.PENDENTE { background: var(--warn-bg); color: var(--warn); }
+
+  /* Dias em aberto na fila */
+  .dias { display:inline-block; padding: 1px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .dias.ok { background: var(--ok-bg); color: var(--ok); }
+  .dias.atencao { background: var(--warn-bg); color: var(--warn); }
+  .dias.critico { background: var(--bad-bg); color: var(--bad); }
+
+  .custo-box { margin-top: 12px; }
+  .custo-total { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  .empty { color: var(--muted); font-size: 13px; padding: 26px 0; text-align: center; }
+  .muted { color: var(--muted); }
+
+  .grp { border:1px solid var(--border); border-radius: 10px; margin-bottom: 14px; background: var(--bg); overflow:hidden; }
+  .grp-head { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; padding: 12px 14px; background: rgba(139,195,74,.06); border-bottom: 1px solid var(--border); }
+  .grp-head .tname { font-weight:700; font-size:15px; }
+  .chips { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--muted); }
+  .chips b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .grp-body { max-height: 320px; overflow:auto; }
+
+  .modal-back { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: flex-start; justify-content: center; z-index: 100; overflow: auto; padding: 40px 16px; }
+  .modal-back.open { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; width: min(520px, 100%); box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+  .modal h3 { margin: 0 0 12px; font-size: 16px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-grid label { display:flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  .form-grid label.full { grid-column: 1 / -1; }
+  .form-grid input { width: 100%; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+  .backlink { display:inline-flex; align-items:center; gap:6px; color: var(--accent); cursor:pointer; font-size: 13px; margin-bottom: 6px; }
+  .hidden { display: none !important; }
+  .filters { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .toolbar { display:flex; gap:10px; align-items:center; padding: 8px 14px; border-bottom:1px solid var(--border); font-size:12px; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <img class="brand-iso" width="42" height="42" src="/static/volix-selo-grafite.svg" alt="Volix">
+    <div class="volix">Log<b>H</b>ub</div>
+    <div class="glow"></div>
+    <div class="tag">Sua logística <b>num só lugar</b></div>
+  </div>
+  <nav class="side-nav">
+    <a href="/home">🏠 Início</a>
+    <div class="sec">Financeiro</div>
+    <a href="/audit">📋 Auditoria de CTe</a>
+    <a href="/percent-nf">💰 Frete sobre Faturamento</a>
+    <a href="/conferencia">🧾 Conferência de Fatura</a>
+    <div class="sec">Suprimentos</div>
+    <a href="/coletas">🚚 Coleta em Fornecedores</a>
+    <div class="sec">Expedição</div>
+    <a href="/romaneio" class="active">📦 Romaneio de Expedição</a>
+    <div class="sec">Entregas</div>
+    <a href="/tracking">🗼 Torre de Controle</a>
+    <a href="/relatorio-dia">📨 Relatório do Dia</a>
+    <a href="/scorecard">🏆 Scorecard de Desempenho</a>
+    <div class="sec">Comercial</div>    <a href="/vendas">📈 Análise de Vendas</a>
+    <div class="sec">Configuração</div>
+    <a href="/cadastro">🗂️ Cadastro de Tabelas</a>
+  </nav>
+</aside>
+
+<header>
+  <img class="vmark vmark-dark" width="40" height="40" src="/static/volix-selo-grafite.svg" alt="Volix"><img class="vmark vmark-light" width="40" height="40" src="/static/volix-selo-principal.svg" alt="Volix">
+  <h1>Romaneio de Expedição</h1>
+  <p>Romaneio de expedição: suba os <b>XMLs das NF-e</b> (faturadas no Olist) — elas entram numa <b>fila por transportadora</b>. Monte cada romaneio puxando as NFs da fila, imprima o PDF e veja o que <b>já tem CTe</b>. Também importa <b>romaneio pronto em PDF</b>.</p>
+</header>
+
+<main>
+
+  <!-- ═══ LISTA ═══ -->
+  <div id="listView">
+
+    <!-- Integração Olist -->
+    <div class="panel" id="olistPanel">
+      <div class="row spread">
+        <h2 style="margin:0;">🔗 Olist (Tiny ERP)</h2>
+        <div class="row" style="gap:8px;">
+          <button class="mini" id="btnOlistPeso" type="button" title="Relê o XML no Olist e completa peso/volume das NFs que entraram sem esses dados (não adiciona nem remove NF)">⚖️ Re-sincronizar peso/volume</button>
+          <button class="primary mini" id="btnOlistSync" type="button">🔄 Sincronizar Olist agora</button>
+        </div>
+      </div>
+      <div id="olistStatus" class="muted" style="font-size:13px;margin-top:10px;">Verificando integração…</div>
+      <div id="olistMsg" style="font-size:13px;margin-top:8px;"></div>
+      <div id="olistAlertas" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Subir NFs</h2>
+      <div class="drops">
+        <div class="drop" id="dropXml">
+          <div>📥 <b>Arraste os XMLs das NF-e</b> ou clique</div>
+          <div style="font-size:12px;margin-top:6px;">Vários .xml — vão para a fila, agrupados por transportadora</div>
+          <input type="file" id="fileXml" accept=".xml" multiple class="hidden" />
+        </div>
+        <div class="drop" id="dropPdf">
+          <div>📄 <b>Importar romaneio pronto (PDF)</b> ou clique</div>
+          <div style="font-size:12px;margin-top:6px;">PDF do Olist — as NFs reconhecidas vão para a fila</div>
+          <input type="file" id="filePdf" accept=".pdf" class="hidden" />
+        </div>
+      </div>
+      <div id="uploadMsg" class="muted" style="font-size:12px;margin-top:10px;"></div>
+    </div>
+
+    <!-- Fila -->
+    <div class="panel">
+      <div class="row spread">
+        <h2 style="margin:0;">🗂️ NFs na fila (sem romaneio) <span id="poolCount" class="muted" style="text-transform:none;font-weight:400;"></span></h2>
+        <button class="secondary mini" id="refreshPool" type="button">Atualizar fila</button>
+      </div>
+      <div id="poolGroups" style="margin-top:14px;"></div>
+      <div class="empty" id="poolEmpty" style="display:none;">A fila está vazia. Suba XMLs de NF-e acima.</div>
+    </div>
+
+    <!-- Romaneios -->
+    <div class="panel">
+      <div class="row spread">
+        <h2 style="margin:0;">Romaneios criados</h2>
+        <div class="filters">
+          <input type="text" id="fSearch" placeholder="Buscar nº ou transportadora" style="width:210px;" />
+          <select id="fSit"><option value="">Todas as situações</option><option value="aberto">Aberto</option><option value="liberado">Liberado</option><option value="encerrado">Encerrado</option><option value="expedido">Expedido</option><option value="cancelado">Cancelado</option></select>
+          <button class="secondary mini" id="refreshBtn" type="button">Atualizar</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto;margin-top:12px;">
+        <table id="tbl">
+          <thead>
+            <tr>
+              <th>Nº romaneio</th><th>Data</th><th>Transportadora</th>
+              <th class="num">NFs</th><th class="num">Volumes</th><th class="num">Peso (kg)</th><th class="num">Valor (R$)</th>
+              <th class="num">Custo frete (R$)</th><th>Situação</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="tblBody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="listEmpty" style="display:none;">Nenhum romaneio criado ainda.</div>
+      <div id="romPager"></div>
+    </div>
+  </div>
+
+  <!-- ═══ DETALHE ═══ -->
+  <div id="detailView" class="hidden">
+    <div class="backlink" id="backLink">← Voltar</div>
+    <div class="panel">
+      <div class="row spread" style="align-items:flex-start;">
+        <div>
+          <h2 style="margin:0 0 6px;" id="dTitulo">Romaneio</h2>
+          <div class="muted" id="dSub"></div>
+          <div id="dOlistMsg" style="font-size:13px;margin-top:6px;"></div>
+        </div>
+        <div class="row">
+          <span class="st" id="dStatus"></span>
+          <button id="dLiberar" type="button" title="Marcar como levado pela transportadora e lançar na Torre">📤 Liberar</button>
+          <button class="secondary" id="dCusto" type="button">🧮 Calcular custo</button>
+          <button class="secondary" id="dOlistExp" type="button" title="Criar o agrupamento correspondente na Expedição do Olist">📦 Expedição Olist</button>
+          <a class="btn secondary" id="dPdf" target="_blank" rel="noopener">🖨️ PDF</a>
+          <a class="btn secondary" id="dXlsx">⬇ Excel</a>
+          <select id="dSit" class="secondary" title="Situação" style="padding:8px;"></select>
+          <button class="danger mini" id="dDel" type="button">Excluir</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel"><div class="kpis" id="dKpis"></div></div>
+
+    <div class="panel hidden" id="custoPanel">
+      <div class="row spread">
+        <h2 style="margin:0;">🧮 Custo estimado de frete <span class="muted" id="custoResumo" style="text-transform:none;font-weight:400;"></span></h2>
+      </div>
+      <div class="custo-box" id="custoBox"></div>
+    </div>
+
+    <div class="panel">
+      <div class="row spread">
+        <h2 style="margin:0;">NFs do romaneio · cobertura de CTe <span class="muted" style="text-transform:none;font-weight:400;">(cruzamento provável com a auditoria)</span></h2>
+        <div class="row">
+          <button class="secondary mini hidden" id="btnMover" type="button">Mover para…</button>
+          <button class="danger mini hidden" id="btnRemove" type="button">Remover selecionadas</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto;margin-top:10px;">
+        <table id="itensTbl">
+          <thead>
+            <tr>
+              <th style="width:28px;"><input type="checkbox" id="chkAllItens" title="Selecionar tudo"></th>
+              <th>NF</th><th class="wrap">Cliente</th><th>Destino</th>
+              <th class="num">Vol.</th><th class="num">Peso (kg)</th><th class="num">Valor (R$)</th><th>CTe</th><th>Entrega</th>
+            </tr>
+          </thead>
+          <tbody id="itensBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel" id="addPanel">
+      <div class="row spread">
+        <h2 style="margin:0;">➕ Adicionar NFs da fila <span id="addTransp" class="muted" style="text-transform:none;font-weight:400;"></span></h2>
+        <div class="row">
+          <label class="inline" style="cursor:pointer;"><input type="checkbox" id="addTodas"> incluir de outras transportadoras</label>
+          <button class="mini" id="btnAdd" type="button" disabled>Adicionar selecionadas</button>
+        </div>
+      </div>
+      <div class="muted" id="addHint" style="font-size:11px;margin-top:6px;"></div>
+      <div style="overflow-x:auto;margin-top:10px;">
+        <table id="addTbl">
+          <thead><tr><th style="width:28px;"><input type="checkbox" id="chkAllAdd"></th><th>NF</th><th class="wrap">Cliente</th><th>Transp. atual</th><th>Destino</th><th class="num">Vol.</th><th class="num">Peso</th><th class="num">Valor</th></tr></thead>
+          <tbody id="addBody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="addEmpty" style="display:none;">Nenhuma NF na fila.</div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ═══ MODAL CRIAR ROMANEIO ═══ -->
+<div class="modal-back" id="createBack">
+  <div class="modal">
+    <h3 id="createTitle">Criar romaneio</h3>
+    <div class="muted" id="createResumo" style="font-size:12px;margin-bottom:12px;"></div>
+    <div class="form-grid">
+      <label>Data de expedição<input type="date" id="cData"></label>
+      <label>Motorista<input type="text" id="cMot" placeholder="opcional"></label>
+      <label>Veículo<input type="text" id="cVei" placeholder="opcional"></label>
+      <label>Placa<input type="text" id="cPla" placeholder="opcional"></label>
+    </div>
+    <div class="modal-actions">
+      <button class="secondary" id="createCancel" type="button">Cancelar</button>
+      <button id="createConfirm" type="button">Criar romaneio</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL MOVER NFs ═══ -->
+<div class="modal-back" id="moverBack">
+  <div class="modal">
+    <h3>Mover NFs para outro romaneio</h3>
+    <div class="muted" id="moverResumo" style="font-size:12px;margin-bottom:10px;"></div>
+    <label class="inline" style="display:block;margin-bottom:6px;">Romaneio de destino</label>
+    <select id="moverDestino" style="width:100%;"></select>
+    <div class="muted" style="font-size:11px;margin-top:8px;">As NFs passam a pertencer à transportadora do romaneio de destino.</div>
+    <div class="modal-actions">
+      <button class="secondary" id="moverCancel" type="button">Cancelar</button>
+      <button id="moverConfirm" type="button">Mover</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/pager.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const money = v => (Number(v)||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtData = s => { if(!s) return ''; const p=String(s).slice(0,10).split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:s; };
+// Volume: mostra o número; se não veio no XML do Olist (qVol ausente → null/0),
+// sinaliza com ⚠ para o operador preencher a qtd de volumes na expedição do Olist.
+const volCell = v => (v==null || v===0)
+  ? '<span title="Volume não informado no Olist — preencha a quantidade de volumes na expedição ANTES de autorizar a NF (o XML autorizado é imutável)" style="color:#e6a700;cursor:help;font-weight:700;">⚠</span>'
+  : v;
+const hoje = () => new Date().toISOString().slice(0,10);
+const SITS = {aberto:'Aberto', liberado:'Liberado', encerrado:'Encerrado', expedido:'Expedido', cancelado:'Cancelado'};
+const diasTxt = d => d==null ? '' : (d===0 ? 'hoje' : d+'d');
+function custoCell(r, t){
+  if(r.custo_estimado==null) return '<span class="muted" title="Ainda não calculado — abra o romaneio e clique em Calcular custo">—</span>';
+  const pct = (t.valor_total>0) ? ` <span class="muted" style="font-size:11px;">(${(r.custo_estimado/t.valor_total*100).toLocaleString('pt-BR',{maximumFractionDigits:1})}%)</span>` : '';
+  return `R$ ${money(r.custo_estimado)}${pct}`;
+}
+
+let poolSel = {};      // transportadora -> Set(nota_id) selecionadas na fila
+let createCtx = null;  // {transportadora, nota_ids}
+
+// ── Uploads ──────────────────────────────────────────────
+function wireDrop(dropId, inputId, handler){
+  const drop = $(dropId), input = $(inputId);
+  drop.addEventListener('click', () => input.click());
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
+  drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('drag'); if(e.dataTransfer.files.length) handler(e.dataTransfer.files); });
+  input.addEventListener('change', () => { if(input.files.length) handler(input.files); input.value=''; });
+}
+async function uploadXml(files){
+  $('#uploadMsg').textContent = `Lendo ${files.length} XML(s)…`;
+  const fd = new FormData(); for(const f of files) fd.append('files', f);
+  await enviar('/api/romaneio/upload-xml', fd);
+}
+async function uploadPdf(files){
+  $('#uploadMsg').textContent = 'Lendo PDF…';
+  const fd = new FormData(); fd.append('file', files[0]);
+  await enviar('/api/romaneio/import-pdf', fd);
+}
+async function enviar(url, fd){
+  try {
+    const r = await fetch(url, {method:'POST', body:fd});
+    if(!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e.detail||('Erro '+r.status)); }
+    const res = await r.json();
+    let msg = `✓ ${res.adicionadas} NF(s) para a fila`;
+    if(res.duplicadas) msg += ` · ${res.duplicadas} já existiam`;
+    if((res.erros||[]).length) msg += ` · ${res.erros.length} com erro`;
+    $('#uploadMsg').textContent = msg;
+    carregarFila();
+  } catch(err){ $('#uploadMsg').textContent = '⚠ ' + err.message; }
+}
+
+// ── Fila ─────────────────────────────────────────────────
+async function carregarFila(){
+  let data;
+  try {
+    const r = await fetch('/api/romaneio/fila');
+    if(!r.ok) throw new Error('Erro '+r.status);
+    data = await r.json();
+  } catch(err){ $('#poolGroups').innerHTML=''; $('#poolEmpty').style.display='block'; $('#poolEmpty').textContent='Falha ao carregar fila: '+err.message; return; }
+
+  const grupos = data.grupos||[];
+  $('#poolCount').textContent = data.totais && data.totais.qtd_nfs ? `· ${data.totais.qtd_nfs} NF(s)` : '';
+  $('#poolEmpty').style.display = grupos.length ? 'none' : 'block';
+
+  $('#poolGroups').innerHTML = grupos.map(g => {
+    const t = g.totais||{};
+    const sel = poolSel[g.transportadora] || new Set();
+    const linhas = g.itens.map(it => `<tr>
+      <td><input type="checkbox" class="poolChk" data-t="${esc(g.transportadora)}" data-id="${it.id}" ${sel.has(it.id)?'checked':''}></td>
+      <td><b>${esc(it.nf_numero)}</b></td>
+      <td class="wrap">${esc(it.cliente)}</td>
+      <td>${esc(it.dest_municipio)}${it.dest_uf?'/'+esc(it.dest_uf):''}</td>
+      <td><span class="dias ${it.nivel_dias||'ok'}" title="Dias em aberto (desde a emissão)">${diasTxt(it.dias_aberto)}</span></td>
+      <td class="num">${volCell(it.volumes)}</td>
+      <td class="num">${it.peso_bruto?money(it.peso_bruto):''}</td>
+      <td class="num">${money(it.valor)}</td>
+      <td class="num" style="white-space:nowrap;">
+        <button type="button" class="linkish poolTransp" data-id="${it.id}" data-t="${esc(it.transportadora||'')}" aria-label="Trocar transportadora da NF ${esc(it.nf_numero||'')}" title="Trocar transportadora" style="color:var(--accent);">✎</button>
+        <button type="button" class="linkish poolDel" data-id="${it.id}" aria-label="Descartar a NF ${esc(it.nf_numero||'')} do romaneio" title="Descartar">✕</button></td>
+    </tr>`).join('');
+    const diasBadge = g.dias_max!=null ? `<span class="dias ${g.nivel_dias||'ok'}" title="Maior tempo em aberto do grupo">⏳ ${diasTxt(g.dias_max)}</span>` : '';
+    return `<div class="grp">
+      <div class="grp-head">
+        <span class="tname">🚚 ${esc(g.transportadora)} ${diasBadge}</span>
+        <div class="row">
+          <div class="chips"><span>NFs <b>${t.qtd_nfs}</b></span><span>Vol <b>${t.volumes}</b></span><span>Peso <b>${money(t.peso_bruto)}kg</b></span><span>R$ <b>${money(t.valor_total)}</b></span></div>
+          <button class="mini criarBtn" data-t="${esc(g.transportadora)}" type="button">Criar romaneio</button>
+        </div>
+      </div>
+      <div class="toolbar"><label style="cursor:pointer;"><input type="checkbox" class="poolAll" data-t="${esc(g.transportadora)}"> selecionar todas</label></div>
+      <div class="grp-body"><table><thead><tr><th style="width:28px;"></th><th>NF</th><th class="wrap">Cliente</th><th>Destino</th><th>Aberto</th><th class="num">Vol.</th><th class="num">Peso</th><th class="num">Valor</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>
+    </div>`;
+  }).join('');
+
+  document.querySelectorAll('.poolChk').forEach(c => c.addEventListener('change', () => togglePool(c.dataset.t, +c.dataset.id, c.checked)));
+  document.querySelectorAll('.poolAll').forEach(c => c.addEventListener('change', () => {
+    document.querySelectorAll(`.poolChk[data-t="${cssEsc(c.dataset.t)}"]`).forEach(chk => { chk.checked = c.checked; togglePool(c.dataset.t, +chk.dataset.id, c.checked); });
+  }));
+  document.querySelectorAll('.criarBtn').forEach(b => b.addEventListener('click', () => abrirCriar(b.dataset.t)));
+  document.querySelectorAll('.poolDel').forEach(b => b.addEventListener('click', () => descartarNota(+b.dataset.id)));
+  document.querySelectorAll('.poolTransp').forEach(b => b.addEventListener('click', () => trocarTranspFila(+b.dataset.id, b.dataset.t)));
+}
+
+async function trocarTranspFila(id, atual){
+  const nova = prompt('Nova transportadora para esta NF (ela vai para o grupo dessa transportadora):', atual || '');
+  if(nova === null) return;
+  const nome = nova.trim();
+  if(!nome || nome === atual) return;
+  try {
+    const r = await fetch('/api/romaneio/fila/'+id+'/transportadora', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({transportadora: nome})});
+    if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.detail||('Erro '+r.status)); }
+    carregarFila();
+  } catch(err){ alert('Falha ao trocar transportadora: '+err.message); }
+}
+const cssEsc = s => (window.CSS && CSS.escape) ? CSS.escape(s) : s.replace(/"/g,'\\"');
+function togglePool(t, id, on){ const s = poolSel[t] || (poolSel[t]=new Set()); if(on) s.add(id); else s.delete(id); }
+
+async function descartarNota(id){
+  if(!confirm('Descartar esta NF da fila?')) return;
+  try { const r = await fetch('/api/romaneio/fila/'+id, {method:'DELETE'}); if(!r.ok) throw new Error('Erro '+r.status); carregarFila(); }
+  catch(err){ alert('Falha: '+err.message); }
+}
+
+// ── Criar romaneio ───────────────────────────────────────
+function abrirCriar(transp){
+  const sel = poolSel[transp];
+  const ids = sel && sel.size ? [...sel] : [];   // vazio = todas da transportadora
+  createCtx = {transportadora: transp, nota_ids: ids};
+  $('#createTitle').textContent = 'Criar romaneio · ' + transp;
+  $('#createResumo').textContent = ids.length ? `${ids.length} NF(s) selecionada(s)` : 'Todas as NFs desta transportadora na fila';
+  $('#cData').value = hoje(); $('#cMot').value=''; $('#cVei').value=''; $('#cPla').value='';
+  $('#createBack').classList.add('open');
+}
+async function confirmarCriar(){
+  $('#createConfirm').disabled = true;
+  try {
+    const r = await fetch('/api/romaneio/romaneios', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({transportadora: createCtx.transportadora, nota_ids: createCtx.nota_ids,
+        data_expedicao: $('#cData').value, motorista: $('#cMot').value, veiculo: $('#cVei').value, placa: $('#cPla').value})});
+    if(!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e.detail||('Erro '+r.status)); }
+    const rom = await r.json();
+    $('#createBack').classList.remove('open');
+    poolSel[createCtx.transportadora] = new Set();
+    carregarFila(); carregarLista();
+    abrirDetalhe(rom.id);
+  } catch(err){ alert('Falha ao criar: '+err.message); } finally { $('#createConfirm').disabled = false; }
+}
+
+// ── Lista de romaneios ───────────────────────────────────
+let ROM_OFFSET = 0, ROM_LIMIT = 100, ROM_TOTAL = 0;
+// keepPage=true preserva a página (pager); trocar filtro/busca volta à 1ª.
+async function carregarLista(keepPage){
+  if(!keepPage) ROM_OFFSET = 0;
+  const p = new URLSearchParams();
+  if($('#fSearch').value.trim()) p.set('search', $('#fSearch').value.trim());
+  if($('#fSit').value) p.set('situacao', $('#fSit').value);
+  p.set('limit', ROM_LIMIT); p.set('offset', ROM_OFFSET);
+  let d;
+  try { const r = await fetch('/api/romaneio/romaneios?'+p.toString()); if(!r.ok) throw new Error('Erro '+r.status); d = await r.json(); }
+  catch(err){ $('#tblBody').innerHTML=''; $('#romPager').innerHTML=''; $('#listEmpty').style.display='block'; $('#listEmpty').textContent='Falha: '+err.message; return; }
+
+  // Tolerante às duas formas: {total, romaneios:[...]} (novo) ou lista crua [...]
+  // (backend antigo ainda em memória enquanto o servidor não reinicia).
+  const lista = Array.isArray(d) ? d : (d.romaneios || []);
+  ROM_TOTAL = Array.isArray(d) ? d.length : (d.total != null ? d.total : lista.length);
+  $('#listEmpty').textContent = 'Nenhum romaneio criado ainda.';
+  $('#listEmpty').style.display = ROM_TOTAL ? 'none' : 'block';
+  $('#tblBody').innerHTML = lista.map(r => { const t=r.totais||{}; return `<tr class="clic" data-id="${r.id}">
+      <td><b>${esc(r.numero)}</b></td><td>${fmtData(r.data_expedicao)}</td><td>${esc(r.transportadora)}</td>
+      <td class="num">${t.qtd_nfs||0}</td><td class="num">${t.volumes||0}</td><td class="num">${money(t.peso_bruto)}</td><td class="num">${money(t.valor_total)}</td>
+      <td class="num">${custoCell(r, t)}</td>
+      <td><span class="st ${esc(r.situacao)}">${SITS[r.situacao]||esc(r.situacao)}</span></td>
+      <td class="num"><button class="secondary mini" type="button">Abrir</button></td></tr>`; }).join('');
+  document.querySelectorAll('#tblBody tr.clic').forEach(tr => tr.addEventListener('click', () => abrirDetalhe(tr.dataset.id)));
+  Pager.render($('#romPager'), {
+    offset: ROM_OFFSET, limit: ROM_LIMIT, total: ROM_TOTAL, pageSizes: [50, 100, 200],
+    onGo: (novo) => { ROM_OFFSET = novo; carregarLista(true); },
+    onLimit: (novo) => { ROM_LIMIT = novo; ROM_OFFSET = 0; carregarLista(true); },
+  });
+}
+
+// ── Detalhe ──────────────────────────────────────────────
+let detId = null, detTransp = '';
+async function abrirDetalhe(id){
+  let r;
+  try { const resp = await fetch('/api/romaneio/romaneios/'+id); if(!resp.ok) throw new Error('Erro '+resp.status); r = await resp.json(); }
+  catch(err){ alert('Falha ao abrir: '+err.message); return; }
+  detId = id; detTransp = r.transportadora;
+
+  $('#listView').classList.add('hidden'); $('#detailView').classList.remove('hidden'); window.scrollTo(0,0);
+  $('#dTitulo').textContent = r.numero;
+  $('#dStatus').className = 'st ' + esc(r.situacao);
+  $('#dStatus').textContent = SITS[r.situacao] || r.situacao;
+  const emp = r.emitente_nome ? ` · Emitente: ${r.emitente_nome}` : '';
+  const libTxt = r.data_liberacao ? ` · Liberado em ${fmtData(r.data_liberacao)}` : '';
+  $('#dSub').innerHTML = `${esc(r.transportadora)} · Expedição ${fmtData(r.data_expedicao)}${esc(emp)}${esc(libTxt)}`
+    + (r.motorista||r.placa||r.veiculo ? `<br>Motorista: ${esc(r.motorista||'—')} · Placa: ${esc(r.placa||'—')} · Veículo: ${esc(r.veiculo||'—')}` : '');
+
+  const t = r.totais||{}, cov = r.cobertura||{}, ent = r.entrega||{};
+  const entCls = ent.todas_entregues ? 'ok' : 'wait';
+  $('#dKpis').innerHTML = `
+    <div class="kpi hero"><div class="label">NFs</div><div class="val">${t.qtd_nfs||0}</div></div>
+    <div class="kpi"><div class="label">Volumes</div><div class="val">${t.volumes||0}</div></div>
+    <div class="kpi"><div class="label">Peso bruto</div><div class="val">${money(t.peso_bruto)}</div><div class="sub">kg</div></div>
+    <div class="kpi"><div class="label">Valor total</div><div class="val">R$ ${money(t.valor_total)}</div></div>
+    <div class="kpi ${entCls}"><div class="label">Entregues</div><div class="val">${ent.nfs_entregues||0}/${t.qtd_nfs||0}</div><div class="sub">${ent.todas_entregues?'romaneio encerrado':(ent.ultima_entrega?('última '+fmtData(ent.ultima_entrega)):'via OCOREN')}</div></div>
+    <div class="kpi ok"><div class="label">Com CTe (provável)</div><div class="val">${cov.com_cte||0}</div></div>
+    <div class="kpi wait"><div class="label">Aguardando CTe</div><div class="val">${cov.aguardando||0}</div></div>
+    ${r.custo_estimado!=null?`<div class="kpi"><div class="label">Custo estimado</div><div class="val">R$ ${money(r.custo_estimado)}</div><div class="sub">frete previsto</div></div>`:''}`;
+
+  const covMap = {}; (cov.itens||[]).forEach(c => { covMap[c.nota_id] = c; });
+  $('#itensBody').innerHTML = (r.itens||[]).map(it => {
+    const c = covMap[it.id] || {status:'AGUARDANDO'};
+    const destino = (it.dest_municipio||'') + (it.dest_uf?('/'+it.dest_uf):'');
+    const entBadge = it.data_entrega ? `<span class="st ENTREGUE">✓ ${fmtData(it.data_entrega)}</span>` : `<span class="st PENDENTE">pendente</span>`;
+    return `<tr>
+      <td><input type="checkbox" class="itChk" data-id="${it.id}"></td>
+      <td><b>${esc(it.nf_numero)}</b>${it.nf_serie?('<span class="muted"> /'+esc(it.nf_serie)+'</span>'):''}</td>
+      <td class="wrap">${esc(it.cliente)}</td><td>${esc(destino)}</td>
+      <td class="num">${volCell(it.volumes)}</td><td class="num">${it.peso_bruto?money(it.peso_bruto):''}</td><td class="num">${money(it.valor)}</td>
+      <td><span class="st ${c.status}">${c.status==='COM_CTE'?('CTe '+esc(c.numero_cte||'')):'aguardando'}</span></td>
+      <td>${entBadge}</td></tr>`;
+  }).join('');
+  $('#chkAllItens').checked = false; atualizarRemover();
+  document.querySelectorAll('.itChk').forEach(c => c.addEventListener('change', atualizarRemover));
+
+  // Liberar só faz sentido enquanto aberto; encerrado/cancelado desabilita.
+  // Liberar disponível enquanto aberto; se já liberado, vira "re-sincronizar Torre".
+  const podeLiberar = (r.situacao === 'aberto' || r.situacao === 'liberado');
+  $('#dLiberar').style.display = podeLiberar ? '' : 'none';
+  $('#dLiberar').textContent = (r.situacao === 'liberado') ? '🔄 Re-sincronizar Torre' : '📤 Liberar';
+  $('#custoPanel').classList.add('hidden');  // recolhe custo ao trocar de romaneio
+
+  // Expedição do Olist (agrupamento)
+  const exBtn = $('#dOlistExp');
+  if(r.olist_agrupamento_id){
+    $('#dOlistMsg').innerHTML = `📦 <b>Na Expedição do Olist</b> — agrupamento <b>${esc(r.olist_agrupamento_id)}</b>`;
+    exBtn.disabled = true; exBtn.textContent = '📦 Já na Expedição Olist';
+  } else {
+    $('#dOlistMsg').innerHTML = '';
+    exBtn.disabled = false; exBtn.textContent = '📦 Expedição Olist';
+  }
+
+  $('#dSit').innerHTML = Object.entries(SITS).map(([k,v]) => `<option value="${k}" ${k===r.situacao?'selected':''}>${v}</option>`).join('');
+  $('#dSit').onchange = async () => {
+    try { const resp = await fetch('/api/romaneio/romaneios/'+id, {method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({situacao: $('#dSit').value})}); if(!resp.ok){ const e=await resp.json().catch(()=>({})); throw new Error(e.detail||resp.status);} }
+    catch(err){ alert('Falha ao atualizar: '+err.message); }
+  };
+  $('#dPdf').href = '/api/romaneio/romaneios/'+id+'/pdf';
+  $('#dXlsx').href = '/api/romaneio/romaneios/'+id+'/export.xlsx';
+
+  carregarAddPool();
+}
+
+function atualizarRemover(){
+  const n = document.querySelectorAll('.itChk:checked').length;
+  const b = $('#btnRemove'); b.classList.toggle('hidden', n===0); b.textContent = `Remover selecionadas (${n})`;
+  const m = $('#btnMover'); m.classList.toggle('hidden', n===0); m.textContent = `Mover para… (${n})`;
+}
+$('#chkAllItens').addEventListener('change', e => { document.querySelectorAll('.itChk').forEach(c => c.checked = e.target.checked); atualizarRemover(); });
+$('#btnRemove').addEventListener('click', async () => {
+  const ids = [...document.querySelectorAll('.itChk:checked')].map(c => +c.dataset.id);
+  if(!ids.length) return;
+  try { const r = await fetch('/api/romaneio/romaneios/'+detId+'/remove', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({nota_ids:ids})}); if(!r.ok) throw new Error('Erro '+r.status); abrirDetalhe(detId); carregarLista(); }
+  catch(err){ alert('Falha: '+err.message); }
+});
+
+// Mover NFs selecionadas para outro romaneio (adota a transportadora do destino)
+$('#btnMover').addEventListener('click', async () => {
+  const ids = [...document.querySelectorAll('.itChk:checked')].map(c => +c.dataset.id);
+  if(!ids.length) return;
+  let lista = [];
+  // Precisa de TODOS os romaneios para escolher o destino (não só a página).
+  try { const r = await fetch('/api/romaneio/romaneios?limit=100000'); lista = (await r.json()).romaneios || []; } catch(err){ alert('Falha ao listar romaneios: '+err.message); return; }
+  const destinos = lista.filter(x => x.id != detId && x.situacao !== 'cancelado');
+  if(!destinos.length){ alert('Não há outro romaneio para receber as NFs. Crie um romaneio da transportadora desejada primeiro.'); return; }
+  $('#moverResumo').textContent = `${ids.length} NF(s) selecionada(s) do romaneio atual`;
+  $('#moverDestino').innerHTML = destinos.map(x => `<option value="${x.id}">${esc(x.numero)} · ${esc(x.transportadora)} (${x.situacao})</option>`).join('');
+  $('#moverBack').dataset.ids = JSON.stringify(ids);
+  $('#moverBack').classList.add('open');
+});
+$('#moverCancel').addEventListener('click', () => $('#moverBack').classList.remove('open'));
+$('#moverBack').addEventListener('click', e => { if(e.target === $('#moverBack')) $('#moverBack').classList.remove('open'); });
+$('#moverConfirm').addEventListener('click', async () => {
+  const ids = JSON.parse($('#moverBack').dataset.ids || '[]');
+  const destino = $('#moverDestino').value;
+  if(!ids.length || !destino) return;
+  try {
+    const r = await fetch('/api/romaneio/romaneios/'+destino+'/mover', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({nota_ids:ids})});
+    if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.detail||('Erro '+r.status)); }
+    $('#moverBack').classList.remove('open');
+    abrirDetalhe(detId); carregarLista();
+  } catch(err){ alert('Falha ao mover: '+err.message); }
+});
+
+// Adicionar da fila — por padrão só a mesma transportadora; toggle inclui todas.
+async function carregarAddPool(){
+  const todas = $('#addTodas').checked;
+  $('#addTransp').textContent = todas ? '· todas as transportadoras' : ('· ' + detTransp);
+  $('#addHint').textContent = todas
+    ? 'Mostrando NFs de qualquer transportadora. Ao adicionar, a NF passa a pertencer a: ' + detTransp
+    : '';
+  let data;
+  const url = todas ? '/api/romaneio/fila' : ('/api/romaneio/fila?transportadora='+encodeURIComponent(detTransp));
+  try { const r = await fetch(url); if(!r.ok) throw new Error('Erro '+r.status); data = await r.json(); }
+  catch(err){ $('#addBody').innerHTML=''; $('#addEmpty').style.display='block'; $('#addEmpty').textContent='Falha: '+err.message; return; }
+  const notas = data.notas||[];
+  $('#addEmpty').style.display = notas.length ? 'none' : 'block';
+  $('#addBody').innerHTML = notas.map(it => {
+    const outra = todas && it.transportadora && it.transportadora !== detTransp;
+    return `<tr>
+    <td><input type="checkbox" class="addChk" data-id="${it.id}"></td>
+    <td><b>${esc(it.nf_numero)}</b></td><td class="wrap">${esc(it.cliente)}</td>
+    <td>${outra?'<span class="st aberto">'+esc(it.transportadora)+'</span>':'<span class="muted">'+esc(it.transportadora||'')+'</span>'}</td>
+    <td>${esc(it.dest_municipio)}${it.dest_uf?'/'+esc(it.dest_uf):''}</td>
+    <td class="num">${volCell(it.volumes)}</td><td class="num">${it.peso_bruto?money(it.peso_bruto):''}</td><td class="num">${money(it.valor)}</td></tr>`;
+  }).join('');
+  $('#chkAllAdd').checked = false; atualizarAdd();
+  document.querySelectorAll('.addChk').forEach(c => c.addEventListener('change', atualizarAdd));
+}
+$('#addTodas').addEventListener('change', carregarAddPool);
+function atualizarAdd(){ const n = document.querySelectorAll('.addChk:checked').length; const b=$('#btnAdd'); b.disabled = n===0; b.textContent = `Adicionar selecionadas (${n})`; }
+$('#chkAllAdd').addEventListener('change', e => { document.querySelectorAll('.addChk').forEach(c => c.checked = e.target.checked); atualizarAdd(); });
+$('#btnAdd').addEventListener('click', async () => {
+  const ids = [...document.querySelectorAll('.addChk:checked')].map(c => +c.dataset.id);
+  if(!ids.length) return;
+  try { const r = await fetch('/api/romaneio/romaneios/'+detId+'/add', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({nota_ids:ids})}); if(!r.ok) throw new Error('Erro '+r.status); abrirDetalhe(detId); carregarLista(); }
+  catch(err){ alert('Falha: '+err.message); }
+});
+
+$('#dDel')?.addEventListener('click', async () => {
+  if(!confirm('Excluir este romaneio? As NFs voltam para a fila.')) return;
+  try { const r = await fetch('/api/romaneio/romaneios/'+detId, {method:'DELETE'}); if(!r.ok) throw new Error('Erro '+r.status);
+    $('#detailView').classList.add('hidden'); $('#listView').classList.remove('hidden'); carregarLista(); carregarFila(); }
+  catch(err){ alert('Falha ao excluir: '+err.message); }
+});
+
+// #2 Liberar romaneio (transportadora levou) → lança na Torre mesmo sem CTe
+$('#dLiberar').addEventListener('click', async () => {
+  if(!confirm('Liberar o romaneio? As NFs entram na Torre de Controle como expedidas (mesmo sem CTe).')) return;
+  const b = $('#dLiberar'); b.disabled = true; b.textContent = 'Liberando…';
+  try { const r = await fetch('/api/romaneio/romaneios/'+detId+'/liberar', {method:'POST'}); if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.detail||('Erro '+r.status)); }
+    abrirDetalhe(detId); carregarLista(); }
+  catch(err){ alert('Falha ao liberar: '+err.message); }
+  finally { b.disabled = false; b.textContent = '📤 Liberar'; }
+});
+
+// #4 Calcular custo de frete do romaneio
+$('#dCusto').addEventListener('click', async () => {
+  const b = $('#dCusto'); b.disabled = true; b.textContent = 'Calculando…';
+  try {
+    const r = await fetch('/api/romaneio/romaneios/'+detId+'/custo', {method:'POST'});
+    if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.detail||('Erro '+r.status)); }
+    renderCusto(await r.json());
+  } catch(err){ alert('Falha ao calcular custo: '+err.message); }
+  finally { b.disabled = false; b.textContent = '🧮 Calcular custo'; }
+});
+
+// Enviar o romaneio para a Expedição do Olist (cria o agrupamento)
+$('#dOlistExp').addEventListener('click', async () => {
+  const b = $('#dOlistExp'); b.disabled = true; b.textContent = '⏳ Enviando…';
+  $('#dOlistMsg').textContent = 'Criando agrupamento na Expedição do Olist…';
+  try {
+    const r = await fetch('/api/romaneio/romaneios/'+detId+'/olist-expedicao', {method:'POST'});
+    const res = await r.json().catch(()=>({}));
+    if(!r.ok || res.ok === false) throw new Error(res.erro || res.detail || ('Erro '+r.status));
+    let msg = `✓ Enviado — agrupamento <b>${esc(res.idAgrupamento)}</b> (${res.agrupadas} expedição(ões))`;
+    const probs = (res.detalhe||[]).filter(d => d.status !== 'ok');
+    if(probs.length) msg += '<br><span class="muted">Ressalvas: ' + probs.map(d=>`NF ${esc(d.nf)}: ${esc(d.status)}`).join(' · ') + '</span>';
+    $('#dOlistMsg').innerHTML = msg;
+    b.textContent = '📦 Já na Expedição Olist';  // permanece desabilitado
+  } catch(err){
+    $('#dOlistMsg').innerHTML = '<span style="color:#c62828;">⚠ '+esc(err.message)+'</span>';
+    b.disabled = false; b.textContent = '📦 Expedição Olist';
+  }
+});
+
+function renderCusto(res){
+  $('#custoPanel').classList.remove('hidden');
+  if(!res.carrier_ok){
+    $('#custoResumo').textContent = '';
+    $('#custoBox').innerHTML = `<div class="empty" style="color:var(--warn)">⚠ ${esc(res.motivo||'Transportadora sem tabela de preço/prazo cadastrada.')}</div>`;
+    return;
+  }
+  const tabNota = (res.tabela_usada && res.tabela_usada !== res.transportadora) ? ` · tabela: ${esc(res.tabela_usada)}` : '';
+  $('#custoResumo').textContent = `· ${res.transportadora}${tabNota} · ${res.nfs_cotadas}/${res.nfs_total} NF(s) cotadas`;
+  const linhas = (res.itens||[]).map(l => `<tr>
+    <td><b>${esc(l.nf_numero)}</b></td><td class="wrap">${esc(l.cliente)}</td><td>${esc(l.dest_uf||'')}</td>
+    <td class="num">${l.ok?('R$ '+money(l.custo)):('<span class="muted">'+esc(l.motivo||'sem cotação')+'</span>')}</td>
+    <td class="num">${l.ok&&l.prazo_dias!=null?(l.prazo_dias+'d'):''}</td>
+    <td>${l.data_prevista?fmtData(l.data_prevista):''}</td></tr>`).join('');
+  $('#custoBox').innerHTML = `
+    <div class="kpis" style="margin-bottom:14px;">
+      <div class="kpi hero"><div class="label">Custo total estimado</div><div class="custo-total">R$ ${money(res.custo_total)}</div></div>
+      <div class="kpi"><div class="label">% sobre valor das NFs</div><div class="val">${res.pct_frete!=null?res.pct_frete+'%':'—'}</div></div>
+      <div class="kpi"><div class="label">Valor das NFs</div><div class="val">R$ ${money(res.valor_total)}</div></div>
+      ${res.nfs_sem_cotacao?`<div class="kpi wait"><div class="label">Sem cotação</div><div class="val">${res.nfs_sem_cotacao}</div></div>`:''}
+    </div>
+    <div style="overflow-x:auto;"><table>
+      <thead><tr><th>NF</th><th class="wrap">Cliente</th><th>UF</th><th class="num">Custo frete</th><th class="num">Prazo</th><th>Previsão</th></tr></thead>
+      <tbody>${linhas}</tbody></table></div>
+    <div class="muted" style="font-size:11px;margin-top:8px;">Estimativa pelo mesmo motor de cotação (tabela de acordo da transportadora). Encargos por NF; total = soma das NFs cotadas.</div>`;
+}
+
+// ── Eventos gerais ───────────────────────────────────────
+wireDrop('#dropXml', '#fileXml', uploadXml);
+wireDrop('#dropPdf', '#filePdf', uploadPdf);
+$('#createCancel').addEventListener('click', () => $('#createBack').classList.remove('open'));
+$('#createConfirm').addEventListener('click', confirmarCriar);
+$('#createBack').addEventListener('click', e => { if(e.target === $('#createBack')) $('#createBack').classList.remove('open'); });
+$('#backLink').addEventListener('click', () => { $('#detailView').classList.add('hidden'); $('#listView').classList.remove('hidden'); carregarFila(); });
+$('#refreshPool').addEventListener('click', carregarFila);
+$('#refreshBtn').addEventListener('click', carregarLista);
+$('#fSit').addEventListener('change', () => carregarLista());
+let searchT; $('#fSearch').addEventListener('input', () => { clearTimeout(searchT); searchT = setTimeout(() => carregarLista(), 300); });
+
+// ── Olist ────────────────────────────────────────────────
+function fmtDataHora(iso){
+  if(!iso) return 'nunca';
+  const d = new Date(iso);
+  if(isNaN(d)) return iso;
+  return d.toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+}
+async function olistStatus(){
+  try {
+    const r = await fetch('/api/romaneio/olist/status');
+    if(!r.ok) throw new Error('Erro '+r.status);
+    const s = await r.json();
+    const btn = $('#btnOlistSync');
+    if(!s.configurado){
+      $('#olistStatus').innerHTML = '⚠ <b>Token não configurado.</b> Cole o token da API do Olist no arquivo <code>.env</code> (campo <code>OLIST_TOKEN</code>) e reinicie o LogHub.';
+      if(btn) btn.disabled = true;
+      return;
+    }
+    if(btn) btn.disabled = false;
+    const auto = s.auto ? `automático a cada ${s.intervalo_min} min` : 'automático desligado';
+    const ult = s.ultimo_resultado;
+    let linha = `✓ Conectado · ${auto} · última sincronização: <b>${fmtDataHora(s.ultima_sync)}</b>`;
+    if(ult){
+      linha += ` (${ult.novas} nova(s)`;
+      if(ult.com_expedicao_aberta != null) linha += `, ${ult.com_expedicao_aberta} c/ expedição aberta`;
+      if(ult.canceladas) linha += `, ${ult.canceladas} estornada(s)`;
+      if(ult.fechadas) linha += `, ${ult.fechadas} saíram`;
+      linha += ')';
+    }
+    $('#olistStatus').innerHTML = linha;
+    renderAlertasCancelamento(s.alertas || []);
+  } catch(err){ $('#olistStatus').textContent = 'Falha ao ler status: '+err.message; }
+}
+function renderAlertasCancelamento(alertas){
+  const box = $('#olistAlertas');
+  if(!alertas.length){ box.innerHTML = ''; return; }
+  const linhas = alertas.map(a =>
+    `<li style="display:flex;align-items:center;gap:8px;justify-content:space-between;padding:3px 0;">
+       <span>NF <b>${esc(a.nf_numero||'—')}</b> · ${esc(a.transportadora||'sem transportadora')} · romaneio <b>${esc(a.romaneio_numero||a.romaneio_id)}</b></span>
+       <button class="mini alertResolve" data-id="${a.nota_id}" type="button" title="Tirar esta NF cancelada da carga do romaneio">Tirar da carga</button>
+     </li>`
+  ).join('');
+  box.innerHTML =
+    `<div style="border:1px solid #e0a800;background:rgba(224,168,0,.12);border-radius:8px;padding:10px 12px;font-size:13px;">
+       <div class="row spread" style="align-items:center;">
+         <b>⚠ ${alertas.length} NF(s) cancelada(s) no Olist ainda em romaneio.</b>
+         <button class="mini" id="btnResolverTodos" type="button" title="Tirar todas as NFs canceladas dos romaneios">Tirar todas da carga</button>
+       </div>
+       <ul style="list-style:none;margin:8px 0 0;padding:0;max-height:180px;overflow:auto;">${linhas}</ul>
+     </div>`;
+  box.querySelectorAll('.alertResolve').forEach(b =>
+    b.addEventListener('click', () => resolverAlertas([Number(b.dataset.id)])));
+  const bt = $('#btnResolverTodos');
+  if(bt) bt.addEventListener('click', () => resolverAlertas(null));
+}
+async function resolverAlertas(notaIds){
+  try {
+    const r = await fetch('/api/romaneio/alertas-cancelamento/resolver', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({nota_ids: notaIds})});
+    const res = await r.json().catch(()=>({}));
+    if(!r.ok){ throw new Error(res.detail || ('Erro '+r.status)); }
+    renderAlertasCancelamento(res.alertas || []);
+    carregarLista();
+  } catch(err){ $('#olistMsg').innerHTML = '<span style="color:#c62828;">⚠ '+err.message+'</span>'; }
+}
+async function olistSync(){
+  const btn = $('#btnOlistSync');
+  btn.disabled = true; const txt = btn.textContent; btn.textContent = '⏳ Sincronizando…';
+  $('#olistMsg').textContent = '';
+  try {
+    const r = await fetch('/api/romaneio/olist/sincronizar', {method:'POST'});
+    const res = await r.json().catch(()=>({}));
+    if(!r.ok || res.ok === false){ throw new Error(res.erro || res.detail || ('Erro '+r.status)); }
+    let msg = `✓ ${res.novas} NF(s) nova(s) para a fila`;
+    if(res.duplicadas) msg += ` · ${res.duplicadas} já existiam`;
+    if(res.canceladas) msg += ` · ${res.canceladas} estornada(s)`;
+    if(res.fechadas) msg += ` · ${res.fechadas} saíram (expedição fechada)`;
+    if(res.com_expedicao_aberta != null) msg += ` · ${res.com_expedicao_aberta} com expedição aberta (de ${res.encontradas} NF-e no Olist)`;
+    else if(res.encontradas != null) msg += ` · ${res.encontradas} encontrada(s) no Olist`;
+    if(res.erros) msg += ` · ${res.erros} com erro`;
+    $('#olistMsg').innerHTML = '<span style="color:var(--volix,#8bc34a);font-weight:600;">'+msg+'</span>';
+    carregarFila();
+  } catch(err){ $('#olistMsg').innerHTML = '<span style="color:#c62828;">⚠ '+err.message+'</span>'; }
+  finally { btn.textContent = txt; olistStatus(); }
+}
+$('#btnOlistSync').addEventListener('click', olistSync);
+
+async function olistPeso(){
+  const btn = $('#btnOlistPeso');
+  btn.disabled = true; const txt = btn.textContent; btn.textContent = '⏳ Lendo XMLs…';
+  $('#olistMsg').textContent = '';
+  try {
+    const r = await fetch('/api/romaneio/olist/ressincronizar-peso', {method:'POST'});
+    const res = await r.json().catch(()=>({}));
+    if(!r.ok || res.ok === false){ throw new Error(res.erro || res.detail || ('Erro '+r.status)); }
+    if(!res.pendentes){
+      $('#olistMsg').innerHTML = '<span style="color:var(--volix,#8bc34a);font-weight:600;">✓ Nenhuma NF pendente de peso/volume.</span>';
+    } else {
+      let msg = `✓ ${res.atualizadas} de ${res.pendentes} NF(s) completada(s)`;
+      if(res.sem_dado) msg += ` · ${res.sem_dado} sem peso/volume no XML da origem`;
+      if(res.nao_encontradas) msg += ` · ${res.nao_encontradas} não localizada(s) no Olist (fora da janela)`;
+      if(res.erros) msg += ` · ${res.erros} com erro`;
+      $('#olistMsg').innerHTML = '<span style="color:var(--volix,#8bc34a);font-weight:600;">'+msg+'</span>';
+    }
+    carregarFila(); carregarLista();
+  } catch(err){ $('#olistMsg').innerHTML = '<span style="color:#c62828;">⚠ '+err.message+'</span>'; }
+  finally { btn.disabled = false; btn.textContent = txt; }
+}
+$('#btnOlistPeso').addEventListener('click', olistPeso);
+olistStatus();
+
+carregarFila(); carregarLista();
+</script>
+<script src="/static/auth.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Torre de Controle — LogHub</title>
+<link rel="stylesheet" href="/static/volix.css" />
+<style>
+  /* Volix (tokens + menu lateral + cabeçalho) vem de /static/volix.css.
+     Aqui só o CSS específico da Torre de Controle. */
+  main { max-width: none; }  /* ocupa a tela toda; tabela larga rola na horizontal */
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 20px; }
+  .panel h2 { margin: 0 0 12px; font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .dropzone {
+    flex: 1; min-width: 280px; border: 2px dashed var(--border); border-radius: 8px; padding: 24px;
+    text-align: center; color: var(--muted); cursor: pointer; transition: border-color .15s;
+  }
+  .dropzone.drag { border-color: var(--accent); color: var(--text); }
+  .dropzone input { display: none; }
+
+  button { background: var(--accent); color: #fff; border: none; padding: 9px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  button:hover { opacity: .9; }
+  button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+
+  label.inline { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  select, input[type=text], input[type=date] { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 5px 7px; font-size: 12px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+  tbody tr:hover { background: rgba(255,255,255,.02); }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td a { color: var(--accent); text-decoration: none; }
+  td a:hover { text-decoration: underline; }
+
+  .badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge.ENTREGUE_NO_PRAZO, .badge.ENTREGUE { background: var(--ok-bg); color: var(--ok); }
+  .badge.ENTREGUE_ATRASADO, .badge.ATRASADO { background: var(--bad-bg); color: var(--bad); }
+  .badge.VENCE_HOJE, .badge.DEVOLVIDA { background: var(--warn-bg); color: var(--warn); }
+  .badge.DEVOLUCAO { background: #ede3f7; color: #7c3aed; }
+  .badge.EM_TRANSITO { background: #14253a; color: #60a5fa; }
+
+  /* Sinalização de entrega com problema (tentativa frustrada em aberto) */
+  tbody tr.trk-problema td { background: rgba(234,88,12,.12); }
+  tbody tr.trk-problema:hover td { background: rgba(234,88,12,.18); }
+  tbody tr.trk-problema td:first-child { box-shadow: inset 3px 0 0 #ea580c; }
+  .prob-flag { display:inline-block; background:#ea580c; color:#fff; font-size:10px; font-weight:700; padding:1px 7px; border-radius:12px; white-space:nowrap; }
+  /* Sinalização de entrega em rota (último EDI = saída para entrega) */
+  tbody tr.trk-rota td { background: rgba(37,99,235,.10); }
+  tbody tr.trk-rota:hover td { background: rgba(37,99,235,.16); }
+  tbody tr.trk-rota td:first-child { box-shadow: inset 3px 0 0 #2563eb; }
+  .rota-flag { display:inline-block; background:#2563eb; color:#fff; font-size:10px; font-weight:700; padding:1px 7px; border-radius:12px; white-space:nowrap; }
+  /* Sinalização de tentativas de entrega (read-only, não altera o OTD oficial) */
+  .tent-flag { display:inline-block; background:#7c3aed; color:#fff; font-size:10px; font-weight:700; padding:1px 7px; border-radius:12px; white-space:nowrap; margin-left:4px; }
+  .tent-flag.ok { background:#0891b2; }
+  .unif-chip { display:inline-block; background:var(--bg); border:1px solid var(--border); color:var(--muted); font-size:10px; font-weight:600; padding:0 5px; border-radius:10px; cursor:help; }
+  .badge.SEM_PRAZO { background: var(--spot-bg); color: var(--spot); }
+
+  .cat-chip { display:inline-block; padding:1px 7px; border-radius:12px; font-size:10px; font-weight:600; margin-right:6px; }
+  .cat-ENTREGUE { background: var(--ok-bg); color: var(--ok); }
+  .cat-EM_TRANSITO { background: #14253a; color: #60a5fa; }
+  .cat-TENTATIVA_FRUSTRADA { background: var(--warn-bg); color: var(--warn); }
+  .cat-DEVOLUCAO { background: var(--warn-bg); color: var(--warn); }
+  .cat-SINISTRO { background: var(--bad-bg); color: var(--bad); }
+  .cat-OUTROS { background: var(--spot-bg); color: var(--spot); }
+
+  .timeline { margin: 8px 0 4px; padding-left: 0; list-style: none; }
+  .timeline li { padding: 4px 0 4px 18px; position: relative; border-left: 2px solid var(--border); margin-left: 6px; }
+  .timeline li::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); position: absolute; left: -5px; top: 9px; }
+
+  .detail-row td { white-space: normal; background: rgba(255,255,255,.015); font-size: 12px; color: var(--muted); }
+  .chip { background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 3px 8px; }
+  .map-inline { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+  .summary { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .summary .stat { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; font-size: 12px; }
+  .summary .stat.clic { cursor: pointer; transition: border-color .12s, box-shadow .12s, transform .06s; }
+  .summary .stat.clic:hover { border-color: var(--muted); }
+  .summary .stat.clic:active { transform: translateY(1px); }
+  .summary .stat.sel { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: rgba(59,130,246,.10); }
+  .summary .stat b { font-size: 16px; display: block; }
+
+  .diff-pos { color: var(--bad); }
+  .empty { color: var(--muted); font-size: 13px; padding: 20px 0; text-align: center; }
+  .toast { position: fixed; bottom: 20px; right: 20px; background: var(--panel); border: 1px solid var(--border); padding: 10px 16px; border-radius: 8px; font-size: 13px; display: none; z-index: 60; }
+
+  .chart-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .chart-card h3 { margin: 0 0 10px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; font-weight: 600; }
+  .otd-table td, .otd-table th { padding: 6px 10px; font-size: 12px; }
+
+  th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+  th.sortable:hover { color: var(--text); }
+  th.sortable .sort-ind { font-size: 10px; opacity: .55; margin-left: 2px; }
+  th.sortable.sorted { color: var(--accent); }
+  th.sortable.sorted .sort-ind { opacity: 1; color: var(--accent); }
+
+  /* Dropdown de status (múltipla seleção) */
+  .dd { position: relative; }
+  .dd-btn { display: inline-flex; align-items: center; gap: 6px; }
+  .dd-menu {
+    position: absolute; top: calc(100% + 4px); left: 0; z-index: 40; min-width: 210px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  }
+  .dd-menu label {
+    display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 5px;
+    font-size: 12px; color: var(--text); cursor: pointer; white-space: nowrap;
+  }
+  .dd-menu label:hover { background: rgba(255,255,255,.05); }
+  .dd-menu input[type=checkbox] { width: auto; accent-color: var(--accent); }
+  .dd-actions { display: flex; justify-content: space-between; gap: 6px; padding: 6px 4px 2px; border-top: 1px solid var(--border); margin-top: 4px; }
+  .dd-actions button { padding: 5px 10px; font-size: 11px; }
+  .dd-badge { background: var(--accent); color: #fff; border-radius: 10px; padding: 0 6px; font-size: 10px; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <img class="brand-iso" width="42" height="42" src="/static/volix-selo-grafite.svg" alt="Volix">
+    <div class="volix">Log<b>H</b>ub</div>
+    <div class="glow"></div>
+    <div class="tag">Sua logística <b>num só lugar</b></div>
+  </div>
+  <nav class="side-nav">
+    <a href="/home">🏠 Início</a>
+    <div class="sec">Financeiro</div>
+    <a href="/audit">📋 Auditoria de CTe</a>
+    <a href="/percent-nf">💰 Frete sobre Faturamento</a>
+    <a href="/conferencia">🧾 Conferência de Fatura</a>
+    <div class="sec">Suprimentos</div>
+    <a href="/coletas">🚚 Coleta em Fornecedores</a>
+    <div class="sec">Expedição</div>
+    <a href="/romaneio">📦 Romaneio de Expedição</a>
+    <div class="sec">Entregas</div>
+    <a href="/tracking" class="active">🗼 Torre de Controle</a>
+    <a href="/relatorio-dia">📨 Relatório do Dia</a>
+    <a href="/scorecard">🏆 Scorecard de Desempenho</a>
+    <div class="sec">Comercial</div>    <a href="/vendas">📈 Análise de Vendas</a>
+    <div class="sec">Configuração</div>
+    <a href="/cadastro">🗂️ Cadastro de Tabelas</a>
+  </nav>
+</aside>
+
+<header>
+  <img class="vmark vmark-dark" width="40" height="40" src="/static/volix-selo-grafite.svg" alt="Volix"><img class="vmark vmark-light" width="40" height="40" src="/static/volix-selo-principal.svg" alt="Volix">
+  <h1>Torre de Controle de Entregas</h1>
+  <p>Torre de Controle — prazo contratado (CTe + tabela) × ocorrências reais das transportadoras (EDI OCOREN). OTD por transportadora.</p>
+</header>
+
+<main>
+
+  <div class="panel">
+    <h2>1. Importar ocorrências (EDI OCOREN)</h2>
+    <div class="row">
+      <div class="dropzone" id="ediDropzone">
+        <div>Arraste os arquivos OCOREN (.txt) aqui ou clique para selecionar</div>
+        <div style="font-size:11px;margin-top:4px;">(aceita .txt, .oco, .edi, .ocr, .pro — PROCEDA 5.0/3.1, layouts de transportadora calibrados automaticamente)</div>
+        <input type="file" id="ediFileInput" multiple accept=".txt,.oco,.edi,.ocr,.pro" />
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <button class="secondary" id="ediScanBtn" type="button">Escanear pasta de entrada (edi/entrada)</button>
+        <div style="font-size:11px;color:var(--muted);max-width:280px;">
+          Deposite os arquivos OCOREN em <code>edi/entrada</code> no servidor. Arquivo importado vai para <code>edi/processados</code>; arquivo com erro permanece na entrada.
+        </div>
+        <button class="secondary" id="codigosReloadBtn" type="button" title="Releia tables/ocorrencias_codigos.json após editá-lo">Recarregar códigos de ocorrência</button>
+        <button class="secondary" id="sswSyncBtn" type="button" title="Consulta a WebAPI de rastreamento da SSW para as entregas ainda em aberto">Sincronizar via SSW</button>
+        <div id="sswSyncStatus" style="font-size:11px;color:var(--muted);"></div>
+        <button class="secondary" id="jamefSyncBtn" type="button" title="Busca as ocorrências acumuladas no recebedor de webhook da Jamef">Sincronizar Jamef (webhook)</button>
+        <div id="jamefSyncStatus" style="font-size:11px;color:var(--muted);"></div>
+        <details style="margin-top:4px;">
+          <summary style="font-size:11px;color:var(--muted);cursor:pointer;">Manutenção da Torre</summary>
+          <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+            <button class="secondary" id="unificarBtn" type="button" title="Agrupa filiais/CNPJs da mesma transportadora pela raiz do CNPJ">Unificar transportadoras</button>
+            <button class="secondary" id="reprocPrazosBtn" type="button" title="Recalcula a data prevista de todas as entregas (regra atual de feriados + liberação do romaneio)">Recalcular prazos previstos</button>
+            <button class="secondary" id="religarBtn" type="button" title="Religa ocorrências órfãs (romaneio provisório apagado) ao CTe real">Religar ocorrências órfãs</button>
+          </div>
+        </details>
+      </div>
+    </div>
+    <div id="ediReport" style="display:none; margin-top:14px;"></div>
+    <div id="sswSyncReport" style="display:none; margin-top:14px;"></div>
+  </div>
+
+  <div class="panel">
+    <h2>2. Entregas</h2>
+    <div class="summary" id="trkKpis"></div>
+
+    <div class="row" style="margin-bottom:12px;">
+      <div class="inline dd" id="trkStatusDD">
+        <span style="font-size:12px;color:var(--muted);">Status</span>
+        <button type="button" class="secondary dd-btn" id="trkStatusBtn" aria-haspopup="true" aria-expanded="false">
+          <span id="trkStatusBtnLabel">Todos</span> <span style="opacity:.6;">▾</span>
+        </button>
+        <div class="dd-menu" id="trkStatusMenu" style="display:none;">
+          <label><input type="checkbox" value="EM_TRANSITO"> 🔵 Em trânsito</label>
+          <label><input type="checkbox" value="VENCE_HOJE"> 🟡 Vence hoje</label>
+          <label><input type="checkbox" value="ATRASADO"> 🔴 Atrasado (sem baixa)</label>
+          <label><input type="checkbox" value="ENTREGUE_NO_PRAZO"> ✅ Entregue no prazo</label>
+          <label><input type="checkbox" value="ENTREGUE_ATRASADO"> ❌ Entregue com atraso</label>
+          <label><input type="checkbox" value="ENTREGUE"> Entregue (sem prazo)</label>
+          <label><input type="checkbox" value="DEVOLVIDA"> ↩ Devolvida</label>
+          <label><input type="checkbox" value="DEVOLUCAO"> ↩ CT-e de devolução</label>
+          <label><input type="checkbox" value="SEM_PRAZO"> Sem prazo de tabela</label>
+          <div class="dd-actions">
+            <button type="button" class="secondary" id="trkStatusClear">Limpar</button>
+            <button type="button" id="trkStatusApply">Fechar</button>
+          </div>
+        </div>
+      </div>
+      <div class="inline dd" id="trkMesDD">
+        <span style="font-size:12px;color:var(--muted);">Mês</span>
+        <button type="button" class="secondary dd-btn" id="trkMesBtn" aria-haspopup="true" aria-expanded="false">
+          <span id="trkMesBtnLabel">Todos</span> <span style="opacity:.6;">▾</span>
+        </button>
+        <div class="dd-menu" id="trkMesMenu" style="display:none;"></div>
+      </div>
+      <div class="inline dd" id="trkTranspDD">
+        <span style="font-size:12px;color:var(--muted);">Transportadora</span>
+        <button type="button" class="secondary dd-btn" id="trkTranspBtn" aria-haspopup="true" aria-expanded="false">
+          <span id="trkTranspBtnLabel">Todas</span> <span style="opacity:.6;">▾</span>
+        </button>
+        <div class="dd-menu" id="trkTranspMenu" style="display:none;"></div>
+      </div>
+      <div class="inline dd" id="trkUfDD">
+        <span style="font-size:12px;color:var(--muted);">Estado (UF)</span>
+        <button type="button" class="secondary dd-btn" id="trkUfBtn" aria-haspopup="true" aria-expanded="false">
+          <span id="trkUfBtnLabel">Todos</span> <span style="opacity:.6;">▾</span>
+        </button>
+        <div class="dd-menu" id="trkUfMenu" style="display:none;"></div>
+      </div>
+      <label class="inline">Busca <input type="text" id="trkSearch" placeholder="nº CTe, NF, destino…" style="width:150px;" /></label>
+      <label class="inline" title="Some as entregas já concluídas (entregues) da lista para focar no que está em aberto. Devolvidas continuam visíveis."><input type="checkbox" id="trkOcultarEntregues" checked style="width:auto;"> Ocultar entregues</label>
+      <button class="secondary" id="trkFilterBtn" type="button">Filtrar</button>
+      <button id="trkExportBtn" type="button" title="Excel com 3 abas: Entregas, OTD por transportadora e Ocorrências — respeita os filtros selecionados">📄 Exportar relatório (Excel)</button>
+      <button class="secondary" id="trkExportCsvBtn" type="button">Exportar CSV</button>
+      <button class="secondary" id="trkSemVinculoBtn" type="button">Ocorrências sem vínculo <span id="trkSemVinculoCount"></span></button>
+    </div>
+
+    <div id="trkSemVinculoPanel" style="display:none; margin-bottom:14px;"></div>
+
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th class="sortable" data-sort="liberacao" title="Data em que o romaneio foi liberado à transportadora (base do prazo). Sem romaneio, cai para a emissão do CTe.">Liberação <span class="sort-ind"></span></th>
+            <th class="sortable" data-sort="cte" title="Ordenar por nº CTe">CTe <span class="sort-ind"></span></th>
+            <th class="sortable" data-sort="transportadora" title="Ordenar por transportadora">Transportadora <span class="sort-ind"></span></th>
+            <th class="sortable" data-sort="destino" title="Ordenar por destino">Destino <span class="sort-ind"></span></th>
+            <th class="sortable" data-sort="uf" title="Ordenar por estado (UF)">UF <span class="sort-ind"></span></th>
+            <th class="num sortable" data-sort="nfs" title="Ordenar por nº de NFs">NFs <span class="sort-ind"></span></th>
+            <th class="sortable" data-sort="numnf" title="Ordenar pelo nº da NF">Nº NF <span class="sort-ind"></span></th>
+            <th class="sortable" data-sort="prevista" title="Ordenar por previsão">Prevista <span class="sort-ind"></span></th>
+            <th class="sortable" data-sort="entrega" title="Ordenar por entrega real">Entrega real <span class="sort-ind"></span></th>
+            <th class="num sortable" data-sort="atraso" title="Ordenar por atraso">Atraso <span class="sort-ind"></span></th>
+            <th>Última ocorrência</th>
+            <th class="sortable" data-sort="status" title="Ordenar por status (mais urgente primeiro)">Status <span class="sort-ind"></span></th>
+          </tr>
+        </thead>
+        <tbody id="trkBody"></tbody>
+      </table>
+    </div>
+    <div id="trkOcultasMsg" style="display:none; font-size:12px; color:var(--muted); padding:10px 2px 0;"></div>
+    <div class="empty" id="trkEmpty" style="display:none;">Nenhuma entrega registrada — audite CTes na tela de <a href="/audit" style="color:var(--accent);">Auditoria</a> para alimentar a torre.</div>
+  </div>
+
+  <div class="panel">
+    <h2>3. OTD por transportadora</h2>
+    <div class="chart-card">
+      <div style="overflow-x:auto;">
+        <table class="otd-table">
+          <thead>
+            <tr>
+              <th>Transportadora</th>
+              <th class="num">Entregas</th>
+              <th class="num">Entregues</th>
+              <th class="num">OTD %</th>
+              <th class="num">Atraso médio (dias)</th>
+              <th class="num">Em trânsito</th>
+              <th class="num">Atrasadas em aberto</th>
+            </tr>
+          </thead>
+          <tbody id="trkOtdBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const toast = document.getElementById('toast');
+const ediDropzone = document.getElementById('ediDropzone');
+const ediFileInput = document.getElementById('ediFileInput');
+const ediScanBtn = document.getElementById('ediScanBtn');
+const ediReport = document.getElementById('ediReport');
+const codigosReloadBtn = document.getElementById('codigosReloadBtn');
+const sswSyncBtn = document.getElementById('sswSyncBtn');
+const sswSyncStatus = document.getElementById('sswSyncStatus');
+const sswSyncReport = document.getElementById('sswSyncReport');
+const jamefSyncBtn = document.getElementById('jamefSyncBtn');
+const jamefSyncStatus = document.getElementById('jamefSyncStatus');
+const trkKpis = document.getElementById('trkKpis');
+const trkStatusDD = document.getElementById('trkStatusDD');
+const trkStatusBtn = document.getElementById('trkStatusBtn');
+const trkStatusBtnLabel = document.getElementById('trkStatusBtnLabel');
+const trkStatusMenu = document.getElementById('trkStatusMenu');
+const trkSearch = document.getElementById('trkSearch');
+const trkFilterBtn = document.getElementById('trkFilterBtn');
+const trkBody = document.getElementById('trkBody');
+const trkEmpty = document.getElementById('trkEmpty');
+const trkOtdBody = document.getElementById('trkOtdBody');
+const trkSemVinculoBtn = document.getElementById('trkSemVinculoBtn');
+const trkSemVinculoCount = document.getElementById('trkSemVinculoCount');
+const trkSemVinculoPanel = document.getElementById('trkSemVinculoPanel');
+
+const TRK_STATUS_LABEL = {
+  EM_TRANSITO: 'Em trânsito', VENCE_HOJE: 'Vence hoje', ATRASADO: 'Atrasado',
+  ENTREGUE_NO_PRAZO: 'Entregue no prazo', ENTREGUE_ATRASADO: 'Entregue c/ atraso',
+  ENTREGUE: 'Entregue', DEVOLVIDA: 'Devolvida', DEVOLUCAO: '↩ Devolução', SEM_PRAZO: 'Sem prazo',
+};
+
+// ─── Filtro de status (múltipla seleção) ────────────────────────────────────
+// Fonte única da verdade: conjunto de status marcados (vazio = todos).
+const statusSel = new Set();
+
+function statusMenuBoxes() { return [...trkStatusMenu.querySelectorAll('input[type=checkbox]')]; }
+
+function syncStatusUI() {
+  statusMenuBoxes().forEach(cb => { cb.checked = statusSel.has(cb.value); });
+  const n = statusSel.size;
+  trkStatusBtnLabel.innerHTML = n === 0
+    ? 'Todos'
+    : (n === 1 ? escapeHtml(TRK_STATUS_LABEL[[...statusSel][0]] || [...statusSel][0])
+               : `${n} selecionados <span class="dd-badge">${n}</span>`);
+}
+
+function setStatusMenuOpen(open) {
+  trkStatusMenu.style.display = open ? 'block' : 'none';
+  trkStatusBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+trkStatusBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  setStatusMenuOpen(trkStatusMenu.style.display === 'none');
+});
+trkStatusMenu.addEventListener('click', e => e.stopPropagation());
+document.addEventListener('click', () => setStatusMenuOpen(false));
+
+statusMenuBoxes().forEach(cb => cb.addEventListener('change', () => {
+  cb.checked ? statusSel.add(cb.value) : statusSel.delete(cb.value);
+  syncStatusUI();
+  refreshTracking();
+}));
+document.getElementById('trkStatusClear').addEventListener('click', () => {
+  statusSel.clear(); syncStatusUI(); refreshTracking();
+});
+document.getElementById('trkStatusApply').addEventListener('click', () => setStatusMenuOpen(false));
+
+// ─── Fábrica de dropdown multi-seleção (opções dinâmicas: Mês / Transportadora) ─
+function criarMultiSelect(btnId, labelId, menuId, allLabel) {
+  const btn = document.getElementById(btnId);
+  const labelEl = document.getElementById(labelId);
+  const menu = document.getElementById(menuId);
+  const selected = new Set();
+  let options = [];        // [{value, label}]
+  let ultimoJson = null;   // evita re-render desnecessário
+  let onChange = () => {};
+
+  function render() {
+    menu.innerHTML = options.map(o =>
+      `<label><input type="checkbox" value="${escapeHtml(o.value)}"${selected.has(o.value) ? ' checked' : ''}> ${escapeHtml(o.label)}</label>`
+    ).join('') + `<div class="dd-actions"><button type="button" class="secondary" data-clear>Limpar</button><button type="button" data-close>Fechar</button></div>`;
+    menu.querySelectorAll('input[type=checkbox]').forEach(cb => cb.addEventListener('change', () => {
+      cb.checked ? selected.add(cb.value) : selected.delete(cb.value);
+      syncLabel(); onChange();
+    }));
+    menu.querySelector('[data-clear]').addEventListener('click', () => { selected.clear(); render(); syncLabel(); onChange(); });
+    menu.querySelector('[data-close]').addEventListener('click', () => setOpen(false));
+  }
+  function syncLabel() {
+    const n = selected.size;
+    const one = [...selected][0];
+    const lbl = n === 1 ? (options.find(o => o.value === one)?.label ?? one) : '';
+    labelEl.innerHTML = n === 0 ? allLabel : (n === 1 ? escapeHtml(lbl) : `${n} selecionados <span class="dd-badge">${n}</span>`);
+  }
+  function setOpen(o) { menu.style.display = o ? 'block' : 'none'; btn.setAttribute('aria-expanded', o ? 'true' : 'false'); }
+
+  btn.addEventListener('click', e => { e.stopPropagation(); setOpen(menu.style.display === 'none'); });
+  menu.addEventListener('click', e => e.stopPropagation());
+  document.addEventListener('click', () => setOpen(false));
+
+  return {
+    setOptions(items) {
+      const json = JSON.stringify(items);
+      if (json === ultimoJson) { syncLabel(); return; }  // sem mudança: não re-renderiza
+      ultimoJson = json; options = items; render(); syncLabel();
+    },
+    values() { return [...selected]; },
+    add(v) { selected.add(v); },
+    sync() { syncLabel(); },
+    onChange(fn) { onChange = fn; },
+  };
+}
+
+const mesMS = criarMultiSelect('trkMesBtn', 'trkMesBtnLabel', 'trkMesMenu', 'Todos');
+const transpMS = criarMultiSelect('trkTranspBtn', 'trkTranspBtnLabel', 'trkTranspMenu', 'Todas');
+const ufMS = criarMultiSelect('trkUfBtn', 'trkUfBtnLabel', 'trkUfMenu', 'Todos');
+
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.style.display = 'block';
+  setTimeout(() => toast.style.display = 'none', 3500);
+}
+
+const _ESCAPE_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+function escapeHtml(v) {
+  if (v === null || v === undefined) return '';
+  return String(v).replace(/[&<>"']/g, c => _ESCAPE_MAP[c]);
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return iso.slice(0, 10).split('-').reverse().join('/');
+}
+
+// ─── Importação EDI ────────────────────────────────────────────────────────
+
+ediDropzone.addEventListener('click', () => ediFileInput.click());
+ediDropzone.addEventListener('dragover', e => { e.preventDefault(); ediDropzone.classList.add('drag'); });
+ediDropzone.addEventListener('dragleave', () => ediDropzone.classList.remove('drag'));
+ediDropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  ediDropzone.classList.remove('drag');
+  if (e.dataTransfer.files.length) uploadOcoren(e.dataTransfer.files);
+});
+ediFileInput.addEventListener('change', () => {
+  if (ediFileInput.files.length) uploadOcoren(ediFileInput.files);
+});
+
+async function uploadOcoren(fileList) {
+  const fd = new FormData();
+  for (const f of fileList) fd.append('files', f);
+  showToast(`Importando ${fileList.length} arquivo(s) OCOREN…`);
+  try {
+    const resp = await fetch('/api/tracking/ocoren', { method: 'POST', body: fd });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      showToast('Erro ao importar (' + resp.status + '): ' + (err.detail || resp.statusText));
+      return;
+    }
+    renderEdiReport(await resp.json());
+    refreshTracking();
+  } catch (e) {
+    showToast('Falha de conexão com o servidor: ' + e.message + '. Acesse esta página pela URL do servidor (http://.../tracking).');
+  } finally {
+    ediFileInput.value = '';
+  }
+}
+
+ediScanBtn.addEventListener('click', async () => {
+  ediScanBtn.disabled = true;
+  try {
+    const resp = await fetch('/api/tracking/ocoren/scan-folder', { method: 'POST' });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      showToast(err.detail || ('Erro ' + resp.status));
+      return;
+    }
+    renderEdiReport(await resp.json());
+    refreshTracking();
+  } finally {
+    ediScanBtn.disabled = false;
+  }
+});
+
+codigosReloadBtn.addEventListener('click', async () => {
+  const resp = await fetch('/api/tracking/codigos/reload', { method: 'POST' });
+  const data = await resp.json().catch(() => ({}));
+  showToast(`Tabela de códigos recarregada (${data.total_codigos ?? '?'} códigos).`);
+});
+
+// Ações de manutenção da Torre (antes só existiam no backend, sem botão).
+async function manutencao(btn, url, resumo) {
+  btn.disabled = true;
+  try {
+    const resp = await fetch(url, { method: 'POST' });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) { showToast(data.detail || ('Erro ' + resp.status)); return; }
+    showToast(resumo(data));
+    refreshTracking();
+  } catch (e) {
+    showToast('Falha de conexão com o servidor: ' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+document.getElementById('unificarBtn').addEventListener('click', function () {
+  manutencao(this, '/api/tracking/unificar-transportadoras',
+    d => `Transportadoras unificadas (${d.unificadas ?? 0} entrega(s) ajustada(s)).`);
+});
+document.getElementById('reprocPrazosBtn').addEventListener('click', function () {
+  manutencao(this, '/api/tracking/reprocessar-prazos',
+    d => `Prazos recalculados (${d.alteradas ?? 0} de ${d.analisadas ?? 0} entrega(s)).`);
+});
+document.getElementById('religarBtn').addEventListener('click', function () {
+  manutencao(this, '/api/tracking/religar-ocorrencias',
+    d => `Ocorrências religadas: ${d.religadas ?? 0}.`);
+});
+
+sswSyncBtn.addEventListener('click', async () => {
+  sswSyncBtn.disabled = true;
+  sswSyncBtn.textContent = 'Sincronizando…';
+  try {
+    const resp = await fetch('/api/tracking/ssw-sync', { method: 'POST' });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      showToast(data.detail || ('Erro ' + resp.status));
+      return;
+    }
+    renderSswSyncReport(data);
+    refreshSswSyncStatus();
+    refreshTracking();
+  } catch (e) {
+    showToast('Falha de conexão com o servidor: ' + e.message);
+  } finally {
+    sswSyncBtn.disabled = false;
+    sswSyncBtn.textContent = 'Sincronizar via SSW';
+  }
+});
+
+function renderSswSyncReport(data) {
+  const resultados = data.resultados || [];
+  if (!resultados.length) {
+    sswSyncReport.style.display = 'none';
+    return;
+  }
+  sswSyncReport.style.display = 'block';
+  sswSyncReport.innerHTML = '<div class="summary">' + resultados.map(r => {
+    if (r.erro) {
+      return `<div class="stat" style="border-color:var(--bad);"><b>⚠ ${escapeHtml(r.carrier)}</b>${escapeHtml(r.erro)}</div>`;
+    }
+    const falhas = (r.falhas || []).length;
+    const falhaHtml = falhas
+      ? `<div style="font-size:11px;color:var(--warn);margin-top:4px;">${falhas} falha(s): ` +
+        r.falhas.slice(0, 5).map(f => `NF ${escapeHtml(String(f.numero_nf))} (${escapeHtml(f.erro)})`).join('; ') + `</div>`
+      : '';
+    return `<div class="stat" style="text-align:left;">
+      <b>${escapeHtml(r.transportadora)}</b>
+      <span style="font-size:12px;">${r.consultadas}/${r.nfs_pendentes} NF(s) consultada(s) ·
+      ${r.ocorrencias_novas} ocorrência(s) nova(s) · ${r.entregas_atualizadas} entrega(s) atualizada(s)
+      ${r.erros ? `· <b style="color:var(--warn);">${r.erros} erro(s)</b>` : ''}</span>
+      ${falhaHtml}
+    </div>`;
+  }).join('') + '</div>';
+}
+
+async function refreshSswSyncStatus() {
+  try {
+    const resp = await fetch('/api/tracking/ssw-status');
+    const data = await resp.json().catch(() => ({}));
+    if (!data.configurado) {
+      sswSyncStatus.textContent = 'Nenhuma transportadora configurada (SSW_* no .env).';
+      sswSyncBtn.disabled = true;
+      return;
+    }
+    const partes = [`transportadoras: ${(data.carriers_prontos || []).join(', ') || '—'}`];
+    if (data.auto) partes.push(`auto a cada ${data.intervalo_min} min`);
+    if (data.ultima_sincronizacao) partes.push('última: ' + data.ultima_sincronizacao.replace('T', ' '));
+    sswSyncStatus.textContent = partes.join(' · ');
+  } catch (e) {
+    sswSyncStatus.textContent = '';
+  }
+}
+refreshSswSyncStatus();
+
+jamefSyncBtn.addEventListener('click', async () => {
+  jamefSyncBtn.disabled = true;
+  jamefSyncBtn.textContent = 'Sincronizando…';
+  try {
+    const resp = await fetch('/api/tracking/jamef-sync', { method: 'POST' });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || data.erro) {
+      showToast(data.erro || data.detail || ('Erro ' + resp.status));
+      return;
+    }
+    showToast(`Jamef: ${data.itens_recebidos} evento(s) recebido(s), ${data.ocorrencias_novas} ocorrência(s) nova(s), ${data.entregas_atualizadas} entrega(s) atualizada(s).`);
+    refreshJamefSyncStatus();
+    refreshTracking();
+  } catch (e) {
+    showToast('Falha de conexão com o servidor: ' + e.message);
+  } finally {
+    jamefSyncBtn.disabled = false;
+    jamefSyncBtn.textContent = 'Sincronizar Jamef (webhook)';
+  }
+});
+
+async function refreshJamefSyncStatus() {
+  try {
+    const resp = await fetch('/api/tracking/jamef-status');
+    const data = await resp.json().catch(() => ({}));
+    if (!data.configurado) {
+      jamefSyncStatus.textContent = 'Não configurado (JAMEF_WEBHOOK_* no .env).';
+      jamefSyncBtn.disabled = true;
+      return;
+    }
+    const partes = [];
+    if (data.auto) partes.push(`auto a cada ${data.intervalo_min} min`);
+    if (data.ultima_sincronizacao) partes.push('última: ' + data.ultima_sincronizacao.replace('T', ' '));
+    jamefSyncStatus.textContent = partes.join(' · ');
+  } catch (e) {
+    jamefSyncStatus.textContent = '';
+  }
+}
+refreshJamefSyncStatus();
+
+function renderEdiReport(relatorios) {
+  ediReport.style.display = 'block';
+  const encerrados = relatorios.reduce((m, r) => Math.max(m, r.romaneios_encerrados || 0), 0);
+  const notaRom = encerrados
+    ? `<div class="stat" style="border-color:var(--ok);"><b style="color:var(--ok);">📦 ${encerrados} romaneio(s) encerrado(s)</b>por entrega completa de todas as NFs</div>`
+    : '';
+  ediReport.innerHTML = '<div class="summary">' + notaRom + relatorios.map(r => {
+    if (r.erro) {
+      return `<div class="stat" style="border-color:var(--bad);"><b>⚠ ${escapeHtml(r.arquivo)}</b>${escapeHtml(r.erro)}</div>`;
+    }
+    const rejeitadas = (r.linhas_rejeitadas || []).length;
+    const rejHtml = rejeitadas
+      ? `<div style="font-size:11px;color:var(--warn);margin-top:4px;">${rejeitadas} linha(s) rejeitada(s): ` +
+        r.linhas_rejeitadas.slice(0, 5).map(l => `linha ${l.linha} (${escapeHtml(l.motivo)})`).join('; ') +
+        (rejeitadas > 5 ? '…' : '') + `</div>`
+      : '';
+    return `<div class="stat" style="text-align:left;">
+      <b>${escapeHtml(r.arquivo)}</b>
+      <span style="font-size:11px;">OCOREN ${escapeHtml(r.versao)} ${r.transportadora_nome ? '· ' + escapeHtml(r.transportadora_nome) : ''}</span><br>
+      <span style="font-size:12px;">${r.ocorrencias_novas} nova(s) · ${r.ocorrencias_duplicadas} duplicada(s) ·
+      ${r.vinculadas} vinculada(s) · <b style="color:${r.sem_vinculo ? 'var(--warn)' : 'inherit'}">${r.sem_vinculo} sem vínculo</b> ·
+      ${r.entregas_atualizadas} entrega(s) atualizada(s)</span>${rejHtml}
+    </div>`;
+  }).join('') + '</div>';
+}
+
+// ─── Entregas ──────────────────────────────────────────────────────────────
+
+function trkParams() {
+  const p = new URLSearchParams();
+  if (statusSel.size) p.set('status', [...statusSel].join(','));
+  if (mesMS.values().length) p.set('mes', mesMS.values().join(','));
+  if (transpMS.values().length) p.set('transportadora', transpMS.values().join(','));
+  if (ufMS.values().length) p.set('uf', ufMS.values().join(','));
+  if (trkSearch.value) p.set('search', trkSearch.value);
+  return p;
+}
+
+async function loadTracking() {
+  try {
+    const resp = await fetch('/api/tracking?' + trkParams().toString());
+    renderTracking(await resp.json());
+    _calcProblemasNovas();
+  } catch (e) {
+    showToast('Falha ao carregar entregas: ' + e.message);
+  }
+}
+
+// ─── Ordenação clicável das colunas de data/atraso ──────────────────────────
+let _trkRows = [];
+let _trkSort = { col: null, dir: 'desc' };  // dir 'desc' = maior→menor
+let _soProblema = false;      // filtro "só com problema"
+let _problemaNovas = 0;       // ocorrências de problema novas desde a última visita
+let _soRota = false;          // filtro "só em rota de entrega"
+let _soDevolucao = false;     // filtro "só devoluções" (ao clicar no card)
+// Status "entregue" (concluídas) — recolhidas por padrão para reduzir a poluição
+// da Torre.
+const _ENTREGUE_STATUS = new Set(['ENTREGUE_NO_PRAZO', 'ENTREGUE_ATRASADO', 'ENTREGUE']);
+// Devoluções (retorno + devolvida) — também ocultas por padrão; só aparecem ao
+// clicar no card "Devoluções". Senão a Torre enche de retorno.
+const _DEVOLUCAO_STATUS = new Set(['DEVOLUCAO', 'DEVOLVIDA']);
+let _ocultarEntregues = true;
+try { _ocultarEntregues = (localStorage.getItem('trkOcultarEntregues') ?? '1') !== '0'; } catch (e) {}
+
+// Contador de novidades (camada 3): compara as entregas com problema atuais com o
+// que já foi visto (guardado no navegador). Novas = apareceram desde a última vez.
+function _calcProblemasNovas() {
+  const atuais = _trkRows.filter(r => r.problema).map(r => r.chave_cte);
+  let vistas = [];
+  try { vistas = JSON.parse(localStorage.getItem('trkProblemasVistos') || '[]'); } catch (e) {}
+  const set = new Set(vistas);
+  _problemaNovas = atuais.filter(k => !set.has(k)).length;
+}
+function _marcarProblemasVistos() {
+  const atuais = _trkRows.filter(r => r.problema).map(r => r.chave_cte);
+  try { localStorage.setItem('trkProblemasVistos', JSON.stringify(atuais)); } catch (e) {}
+  _problemaNovas = 0;
+}
+// Ranking de urgência do status (maior = mais urgente → aparece 1º no DESC).
+const _STATUS_RANK = {
+  ATRASADO: 8, ENTREGUE_ATRASADO: 7, DEVOLVIDA: 6, DEVOLUCAO: 6, VENCE_HOJE: 5,
+  EM_TRANSITO: 4, SEM_PRAZO: 3, ENTREGUE: 2, ENTREGUE_NO_PRAZO: 1,
+};
+const _cte_num = r => { const n = parseInt(r.numero_cte, 10); return Number.isNaN(n) ? null : n; };
+// UF = últimos 2 caracteres do destino ("CIDADE/UF" ou só "UF").
+const _ufDe = r => { const d = (r.destino || '').trim(); const u = d.slice(-2).toUpperCase(); return /^[A-Z]{2}$/.test(u) ? u : ''; };
+const _SORT_KEYS = {
+  liberacao: r => (r.data_liberacao || r.data_emissao) || null,  // ISO YYYY-MM-DD ordena lexicograficamente
+  cte:      _cte_num,
+  transportadora: r => (r.transportadora || '').toLowerCase() || null,
+  destino:  r => (r.destino || '').toLowerCase() || null,
+  uf:       r => _ufDe(r) || null,
+  nfs:      r => (r.total_nfs ?? null),
+  numnf:    r => { const m = (r.numeros_nf || '').match(/\d+/); return m ? parseInt(m[0], 10) : null; },
+  prevista: r => r.data_prevista || null,
+  entrega:  r => r.data_entrega_real || null,
+  atraso:   r => (r.dias_atraso ?? null),
+  status:   r => (_STATUS_RANK[r.status] ?? 0),
+};
+
+// "Em aberto" = ainda não finalizada (não entregue, não devolvida).
+const _OPEN_STATUS = new Set(['EM_TRANSITO', 'VENCE_HOJE', 'ATRASADO', 'SEM_PRAZO']);
+const _isOpen = r => _OPEN_STATUS.has(r.status);
+// Ordenação PADRÃO da Torre (sem coluna clicada): abertas no topo, finalizadas
+// (entregue no prazo/atrasado, devolvidas) no rodapé; dentro de cada grupo por
+// data prevista do mais próximo → mais distante (sem prazo por último).
+function _defaultSort(a, b) {
+  const oa = _isOpen(a), ob = _isOpen(b);
+  if (oa !== ob) return oa ? -1 : 1;
+  const da = a.data_prevista || null, db = b.data_prevista || null;
+  if (da === null && db === null) return 0;
+  if (da === null) return 1;
+  if (db === null) return -1;
+  return da < db ? -1 : (da > db ? 1 : 0);
+}
+
+function _sortedTrkRows() {
+  if (!_trkSort.col) return _trkRows.slice().sort(_defaultSort);
+  const key = _SORT_KEYS[_trkSort.col];
+  const dir = _trkSort.dir === 'desc' ? -1 : 1;
+  return _trkRows.slice().sort((a, b) => {
+    const va = key(a), vb = key(b);
+    const na = va === null || va === undefined, nb = vb === null || vb === undefined;
+    if (na && nb) return 0;
+    if (na) return 1;   // sem valor (—) sempre por último
+    if (nb) return -1;
+    return va < vb ? -dir : (va > vb ? dir : 0);
+  });
+}
+
+function _updateSortIndicators() {
+  document.querySelectorAll('th.sortable').forEach(th => {
+    const ind = th.querySelector('.sort-ind');
+    if (th.dataset.sort === _trkSort.col) {
+      th.classList.add('sorted');
+      ind.textContent = _trkSort.dir === 'desc' ? '▼' : '▲';
+    } else {
+      th.classList.remove('sorted');
+      ind.textContent = '';
+    }
+  });
+}
+
+function sortTrkBy(col) {
+  if (_trkSort.col === col) _trkSort.dir = _trkSort.dir === 'desc' ? 'asc' : 'desc';
+  else { _trkSort.col = col; _trkSort.dir = 'desc'; }   // 1º clique = maior→menor
+  _updateSortIndicators();
+  renderTrkRows();
+}
+
+document.querySelectorAll('th.sortable').forEach(th =>
+  th.addEventListener('click', () => sortTrkBy(th.dataset.sort)));
+
+function renderTracking(rows) {
+  _trkRows = rows;
+  renderTrkRows();
+}
+
+function renderTrkRows() {
+  let rows = _sortedTrkRows();
+  if (_soProblema) rows = rows.filter(r => r.problema);
+  if (_soRota) rows = rows.filter(r => r.rota);
+  // Card "Devoluções": mostra SÓ as devoluções (retorno + devolvida).
+  if (_soDevolucao) rows = rows.filter(r => _DEVOLUCAO_STATUS.has(r.status));
+  // Recolhe as entregues (concluídas) para reduzir a lista, mantendo a contagem.
+  let ocultas = 0;
+  if (_ocultarEntregues && !_soProblema && !_soRota && !_soDevolucao) {
+    const antes = rows.length;
+    rows = rows.filter(r => !_ENTREGUE_STATUS.has(r.status));
+    ocultas = antes - rows.length;
+  }
+  // Oculta as devoluções por padrão (só aparecem no card "Devoluções"), a menos
+  // que o usuário tenha selecionado um status de devolução no filtro manual.
+  const statusPedeDev = statusSel.has('DEVOLVIDA') || statusSel.has('DEVOLUCAO');
+  let ocultasDev = 0;
+  if (!_soDevolucao && !_soProblema && !_soRota && !statusPedeDev) {
+    const antes = rows.length;
+    rows = rows.filter(r => !_DEVOLUCAO_STATUS.has(r.status));
+    ocultasDev = antes - rows.length;
+  }
+  const msg = document.getElementById('trkOcultasMsg');
+  const partes = [];
+  if (ocultas > 0) partes.push(`✅ ${ocultas} entrega(s) concluída(s) ocultada(s) · <a href="#" id="trkMostrarEntregues" style="color:var(--accent);">mostrar</a>`);
+  if (ocultasDev > 0) partes.push(`↩ ${ocultasDev} devolução(ões) oculta(s) · <a href="#" id="trkMostrarDev" style="color:var(--accent);">ver devoluções</a>`);
+  if (partes.length) {
+    msg.innerHTML = partes.join(' &nbsp;·&nbsp; ');
+    msg.style.display = 'block';
+    const me = msg.querySelector('#trkMostrarEntregues');
+    if (me) me.addEventListener('click', e => { e.preventDefault(); _setOcultarEntregues(false); });
+    const md = msg.querySelector('#trkMostrarDev');
+    if (md) md.addEventListener('click', e => { e.preventDefault(); _toggleDevolucoes(true); });
+  } else {
+    msg.style.display = 'none';
+  }
+  trkBody.innerHTML = '';
+  trkEmpty.style.display = rows.length ? 'none' : 'block';
+
+  rows.forEach((r, idx) => {
+    const tr = document.createElement('tr');
+    if (r.problema) tr.className = 'trk-problema';
+    else if (r.rota) tr.className = 'trk-rota';
+    const atraso = r.dias_atraso ? `<span class="diff-pos">+${r.dias_atraso}d</span>` : (r.dias_atraso === 0 ? '0' : '—');
+    const flag = r.problema ? `<span class="prob-flag" title="${escapeHtml(r.problema_desc || 'Entrega com problema')}">⚠️ Problema</span> `
+               : (r.rota ? `<span class="rota-flag" title="Último EDI: saída para entrega">🚚 Em rota</span> ` : '');
+    let tent = '';
+    if (r.num_tentativas > 0) {
+      const pos = r.dias_pos_tentativa != null
+        ? (r.dias_pos_tentativa === 0 ? ' · entregue no mesmo dia' : ` · entregue +${r.dias_pos_tentativa}d depois`) : '';
+      const perdoa = r.tentativa_cliente_no_prazo ? ' · 1ª no prazo (cliente ausente/fechado) — contada no OTD ajustado' : '';
+      const dd = r.dias_pos_tentativa != null ? ` · +${r.dias_pos_tentativa}d` : '';
+      tent = ` <span class="tent-flag${r.tentativa_cliente_no_prazo ? ' ok' : ''}" title="${r.num_tentativas} tentativa(s) de entrega. 1ª em ${fmtDate(r.primeira_tentativa)}${pos}${perdoa}">✋ ${r.num_tentativas} tent${dd}</span>`;
+    }
+    // Chip de devolução na linha (retorno ↔ ida), clicável para saltar ao par.
+    let devChip = '';
+    if (r.status === 'DEVOLUCAO') {
+      devChip = r.devolucao_de_cte
+        ? ` <span class="unif-chip" data-dev-goto="${escapeHtml(r.devolucao_de_cte)}" style="cursor:pointer;" title="Devolução do CT-e de ida ${escapeHtml(r.devolucao_de_cte)} — clique para ver a ida">↩ ida ${escapeHtml(r.devolucao_de_cte)}</span>`
+        : ` <span class="prob-flag" title="Devolução sem CT-e de ida identificado — vincula-se ao importar o CT-e de ida">↩ ida?</span>`;
+    } else if (r.status === 'DEVOLVIDA') {
+      devChip = r.devolvida_por_cte
+        ? ` <span class="unif-chip" data-dev-goto="${escapeHtml(r.devolvida_por_cte)}" style="cursor:pointer;" title="Retornando pelo CT-e de devolução ${escapeHtml(r.devolvida_por_cte)}${r.retorno_recebido_em ? ' · retorno recebido em ' + fmtDate(r.retorno_recebido_em) : ' · retorno ainda não recebido — abra o + para confirmar'} — clique para ver o retorno">↩ retorno ${escapeHtml(r.devolvida_por_cte)}${r.retorno_recebido_em ? ' ✓' : ''}</span>`
+        : ` <span class="prob-flag" title="Devolvida sem CT-e de retorno identificado — será vinculado automaticamente quando o CT-e de devolução for importado">↩ retorno pendente</span>`;
+    }
+    tr.innerHTML = `
+      <td><button class="secondary" style="padding:2px 8px;" data-trk-toggle="${idx}">+</button></td>
+      <td>${fmtDate(r.data_liberacao || r.data_emissao)}</td>
+      <td><a href="/audit?search=${encodeURIComponent(r.numero_cte || '')}" title="Abrir na auditoria de CTe">${escapeHtml(r.numero_cte || '—')}</a>${r.ctes_unificados ? ` <span class="unif-chip" title="CT-es unificados nesta entrega: ${escapeHtml(r.ctes_unificados)}">+${(r.ctes_unificados.match(/,/g)||[]).length + 1}</span>` : ''}${devChip}</td>
+      <td>${escapeHtml(r.transportadora || '—')}</td>
+      <td>${escapeHtml(r.destino || '—')}</td>
+      <td>${escapeHtml(_ufDe(r) || '—')}</td>
+      <td class="num">${r.nfs_baixadas}/${r.total_nfs}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(r.numeros_nf || '')}">${escapeHtml(r.numeros_nf || '—')}</td>
+      <td>${fmtDate(r.data_prevista)}</td>
+      <td>${fmtDate(r.data_entrega_real)}${r.entrega_manual ? ' <span title="baixa manual">✍</span>' : ''}</td>
+      <td class="num">${atraso}</td>
+      <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;">${flag}${escapeHtml(r.ultima_ocorrencia || '—')}${tent}</td>
+      <td><span class="badge ${r.status}">${TRK_STATUS_LABEL[r.status] || r.status}</span></td>
+    `;
+    trkBody.appendChild(tr);
+
+    const detail = document.createElement('tr');
+    detail.className = 'detail-row';
+    detail.style.display = 'none';
+    const td = document.createElement('td');
+    td.colSpan = 13;
+    td.innerHTML = '<div style="color:var(--muted);">Carregando linha do tempo…</div>';
+    detail.appendChild(td);
+    trkBody.appendChild(detail);
+
+    const gotoChip = tr.querySelector('[data-dev-goto]');
+    if (gotoChip) gotoChip.addEventListener('click', () => {
+      trkSearch.value = gotoChip.dataset.devGoto;
+      refreshTracking();
+    });
+
+    let loaded = false;
+    tr.querySelector('[data-trk-toggle]').addEventListener('click', async () => {
+      const opening = detail.style.display === 'none';
+      detail.style.display = opening ? 'table-row' : 'none';
+      if (opening && !loaded) {
+        loaded = true;
+        await renderTimeline(td, r);
+      }
+    });
+  });
+}
+
+function ocsTimelineHtml(ocs) {
+  return `<ul class="timeline">` + ocs.map(o => `
+      <li>
+        <span class="cat-chip cat-${escapeHtml(o.categoria)}">${escapeHtml(o.categoria.replace(/_/g, ' '))}</span>
+        <b>${fmtDate(o.data_ocorrencia)}${o.hora ? ' ' + escapeHtml(o.hora) : ''}</b> —
+        [${escapeHtml(o.codigo)}] ${escapeHtml(o.descricao)}
+        <span style="color:var(--muted);">${o.texto ? '· ' + escapeHtml(o.texto) + ' ' : ''}· arquivo ${escapeHtml(o.arquivo_origem || '—')}</span>
+      </li>`).join('') + `</ul>`;
+}
+
+async function renderTimeline(td, r) {
+  try {
+    const resp = await fetch('/api/tracking/' + encodeURIComponent(r.chave_cte) + '/timeline');
+    const data = await resp.json();
+
+    // Agrupa TODAS as ocorrências por NF (não só a última).
+    const porNf = {};
+    (data.ocorrencias || []).forEach(o => { (porNf[o.numero_nf] = porNf[o.numero_nf] || []).push(o); });
+
+    let blocosHtml;
+    if (data.nfs.length) {
+      blocosHtml = data.nfs.map(n => {
+        const ocs = porNf[n.numero_nf] || [];
+        const cab = `<div style="margin-top:10px;">
+          <span class="chip">NF ${escapeHtml(n.numero_nf)}${n.serie && n.serie !== '0' ? '/' + escapeHtml(n.serie) : ''}
+          ${n.data_entrega ? '✅ entregue ' + fmtDate(n.data_entrega) : '⏳ em aberto'}</span>
+          <span style="color:var(--muted);font-size:11px;margin-left:6px;">${ocs.length} ocorrência(s)</span>
+        </div>`;
+        const corpo = ocs.length ? ocsTimelineHtml(ocs)
+          : `<div style="color:var(--muted);margin:4px 0 4px 6px;font-size:12px;">Sem ocorrências EDI para esta NF ainda.</div>`;
+        return cab + corpo;
+      }).join('');
+      // Ocorrências cujo número de NF não bate com nenhuma NF do CTe (raro)
+      const numerosNf = new Set(data.nfs.map(n => n.numero_nf));
+      const orfas = (data.ocorrencias || []).filter(o => !numerosNf.has(o.numero_nf));
+      if (orfas.length) {
+        blocosHtml += `<div style="margin-top:10px;"><span class="chip">Outras ocorrências</span></div>` + ocsTimelineHtml(orfas);
+      }
+    } else {
+      blocosHtml = data.ocorrencias.length
+        ? ocsTimelineHtml(data.ocorrencias)
+        : `<div style="color:var(--muted);margin:8px 0;">Nenhuma NF-e identificada e nenhuma ocorrência EDI para este CTe.</div>`;
+    }
+
+    td.innerHTML = `
+      <div><b>Chave CTe:</b> ${escapeHtml(r.chave_cte)} | <b>Prazo tabela:</b> ${r.prazo_dias ?? '—'} dia(s) útil(eis) | <b>Arquivo:</b> ${escapeHtml(r.arquivo || '—')}
+        | <a href="/audit?search=${encodeURIComponent(r.numero_cte || r.chave_cte)}" style="color:var(--accent);">ver auditoria deste CTe →</a></div>
+      <div style="margin-top:6px;"><b>Ocorrências por NF-e:</b></div>
+      ${blocosHtml}
+      <div class="map-inline" style="margin-top:10px;">
+        <label class="inline">Baixa manual <input type="date" data-manual-date value="${r.entrega_manual && r.data_entrega_real ? String(r.data_entrega_real).slice(0, 10) : ''}" /></label>
+        <button data-manual-save>Salvar</button>
+        ${r.entrega_manual ? '<button class="secondary" data-manual-clear>Remover baixa manual</button>' : ''}
+      </div>
+      ${devolucaoBlocoHtml(r)}`;
+
+    td.querySelector('[data-manual-save]').addEventListener('click', async () => {
+      const val = td.querySelector('[data-manual-date]').value;
+      if (!val) { showToast('Informe a data da entrega.'); return; }
+      await patchEntrega(r.chave_cte, val);
+    });
+    const clearBtn = td.querySelector('[data-manual-clear]');
+    if (clearBtn) clearBtn.addEventListener('click', () => patchEntrega(r.chave_cte, null));
+
+    // Baixa do RETORNO: confirma que a mercadoria devolvida voltou à origem —
+    // registra a data no CT-e de devolução (r.devolvida_por_chave).
+    const devBaixaSave = td.querySelector('[data-dev-baixa-save]');
+    if (devBaixaSave) devBaixaSave.addEventListener('click', () => {
+      const val = td.querySelector('[data-dev-baixa-date]').value;
+      if (!val) { showToast('Informe a data em que o retorno foi recebido.'); return; }
+      if (!r.devolvida_por_chave) { showToast('CT-e de devolução não localizado.'); return; }
+      patchEntrega(r.devolvida_por_chave, val);
+    });
+    const devBaixaClear = td.querySelector('[data-dev-baixa-clear]');
+    if (devBaixaClear) devBaixaClear.addEventListener('click', () => {
+      if (r.devolvida_por_chave) patchEntrega(r.devolvida_por_chave, null);
+    });
+
+    const devVincNfBtn = td.querySelector('[data-dev-vincular-nf]');
+    if (devVincNfBtn) devVincNfBtn.addEventListener('click', () => {
+      const nf = (td.querySelector('[data-dev-nf]').value || '').trim();
+      if (!nf) { showToast('Informe o nº da NF de origem.'); return; }
+      vincularDevolucaoPorNf(r.chave_cte, nf);
+    });
+    const devDesvBtn = td.querySelector('[data-dev-desvincular]');
+    if (devDesvBtn) devDesvBtn.addEventListener('click', () => desvincularDevolucao(r.chave_cte));
+  } catch (e) {
+    td.innerHTML = `<div style="color:var(--bad);">Falha ao carregar linha do tempo: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+async function patchEntrega(chave, dataEntrega) {
+  const resp = await fetch('/api/tracking/' + encodeURIComponent(chave), {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data_entrega: dataEntrega }),
+  });
+  if (resp.ok) {
+    showToast(dataEntrega ? 'Entrega registrada manualmente.' : 'Baixa manual removida.');
+    refreshTracking();
+  } else {
+    const err = await resp.json().catch(() => ({}));
+    showToast('Erro: ' + (err.detail || resp.status));
+  }
+}
+
+// ─── Devolução: vínculo CT-e de retorno ↔ CT-e original ─────────────────────
+function devolucaoBlocoHtml(r) {
+  if (r.devolucao_de) {
+    return `<div class="map-inline" style="margin-top:8px;">
+      <span class="badge DEVOLUCAO">↩ Devolução</span>
+      <span style="color:var(--muted);">Este CT-e é a devolução do CT-e <b>${escapeHtml(r.devolucao_de_cte || '?')}</b>.</span>
+      <button class="secondary" data-dev-desvincular>Desvincular</button></div>`;
+  }
+  if (r.devolvida_por_cte) {
+    const recebido = r.retorno_recebido_em
+      ? `<span style="color:var(--ok);">✓ Retorno recebido em ${fmtDate(r.retorno_recebido_em)}</span>
+         <button class="secondary" data-dev-baixa-clear>Remover baixa do retorno</button>`
+      : `<label class="inline">Confirmar retorno recebido em <input type="date" data-dev-baixa-date /></label>
+         <button data-dev-baixa-save>Dar baixa no retorno</button>`;
+    return `<div class="map-inline" style="margin-top:8px; flex-wrap:wrap; gap:6px;">
+      <span class="badge DEVOLVIDA">↩ Devolvida</span>
+      <span style="color:var(--muted);">Retornando pelo CT-e de devolução <b>${escapeHtml(r.devolvida_por_cte)}</b>.</span>
+      ${recebido}</div>`;
+  }
+  return `<div class="map-inline" style="margin-top:8px; flex-wrap:wrap; gap:6px;">
+    <span class="badge DEVOLUCAO">↩ Devolução</span>
+    <label class="inline">Este CT-e é devolução da <b>NF de origem</b> nº
+      <input type="text" data-dev-nf placeholder="nº NF" style="width:90px;" /></label>
+    <button data-dev-vincular-nf>Vincular pela NF</button>
+    <span style="color:var(--muted);font-size:11px;">amarra este CT-e ao CT-e que carrega essa NF</span></div>`;
+}
+
+async function vincularDevolucaoPorNf(chaveDevolucao, numeroNf) {
+  const resp = await fetch('/api/tracking/devolucao/vincular-nf', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chave_devolucao: chaveDevolucao, numero_nf: numeroNf }),
+  });
+  if (resp.ok) { showToast('Devolução vinculada à NF de origem ' + numeroNf + '.'); refreshTracking(); }
+  else { const err = await resp.json().catch(() => ({})); showToast('Erro: ' + (err.detail || resp.status)); }
+}
+
+async function vincularDevolucao(chaveDevolucao, chaveOriginal) {
+  const resp = await fetch('/api/tracking/devolucao/vincular', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chave_devolucao: chaveDevolucao, chave_original: chaveOriginal }),
+  });
+  if (resp.ok) { showToast('Devolução vinculada.'); refreshTracking(); }
+  else { const err = await resp.json().catch(() => ({})); showToast('Erro: ' + (err.detail || resp.status)); }
+}
+
+async function desvincularDevolucao(chaveDevolucao) {
+  const resp = await fetch('/api/tracking/devolucao/desvincular', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chave_devolucao: chaveDevolucao }),
+  });
+  if (resp.ok) { showToast('Vínculo de devolução desfeito.'); refreshTracking(); }
+  else { const err = await resp.json().catch(() => ({})); showToast('Erro: ' + (err.detail || resp.status)); }
+}
+
+// ─── KPIs / OTD ────────────────────────────────────────────────────────────
+
+async function loadTrackingKpis() {
+  try {
+    const p = new URLSearchParams();
+    if (mesMS.values().length) p.set('mes', mesMS.values().join(','));
+    if (transpMS.values().length) p.set('transportadora', transpMS.values().join(','));
+    if (ufMS.values().length) p.set('uf', ufMS.values().join(','));
+    const resp = await fetch('/api/tracking/kpis?' + p.toString());
+    const data = await resp.json();
+    const g = data.geral;
+    const otdColor = v => v === null ? 'var(--muted)' : (v >= 95 ? 'var(--ok)' : (v >= 85 ? 'var(--warn)' : 'var(--bad)'));
+    // Cards clicáveis (toggle): cada um filtra as ENTREGAS por um status; os KPIs
+    // seguem mostrando a distribuição completa (loadTrackingKpis ignora o status).
+    const stat = (valor, label, opts = {}) => {
+      const st = opts.st, clic = st !== undefined, sel = clic && st !== '' && statusSel.has(st);
+      const color = opts.color ? ` style="color:${opts.color};"` : '';
+      const title = !clic ? (opts.title || '')
+        : (sel ? 'Clique para remover este status do filtro' : (st ? 'Clique para incluir no filtro: ' + label : 'Ver todas as entregas'));
+      return `<div class="stat${clic ? ' clic' : ''}${sel ? ' sel' : ''}"${clic ? ` data-trk-status="${st}"` : ''}${title ? ` title="${title}"` : ''}><b${color}>${valor}</b>${label}</div>`;
+    };
+    trkKpis.innerHTML = [
+      stat(g.total, 'Entregas', { st: '' }),
+      stat(g.em_transito, 'Em trânsito', { st: 'EM_TRANSITO', color: '#60a5fa' }),
+      stat(g.atrasadas_abertas, 'Atrasadas em aberto', { st: 'ATRASADO', color: 'var(--bad)' }),
+      stat(g.entregues, 'Entregues', { color: 'var(--ok)' }),
+      stat(g.otd_pct === null ? '—' : g.otd_pct + '%', `OTD (base ${g.avaliadas_otd ?? 0})`, { color: otdColor(g.otd_pct) }),
+      (g.otd_ajustado_pct != null && g.otd_ajustado_pct !== g.otd_pct)
+        ? stat(g.otd_ajustado_pct + '%', 'OTD ajustado', { color: otdColor(g.otd_ajustado_pct), title: 'OTD que perdoa a 1ª tentativa feita no prazo quando o cliente estava ausente/fechado/recusou (culpa do cliente). Não altera o OTD oficial.' })
+        : '',
+      (g.otd_potencial_pct != null && g.otd_potencial_pct !== g.otd_pct)
+        ? stat(g.otd_potencial_pct + '%', 'OTD potencial (1ª tentativa)', { color: otdColor(g.otd_potencial_pct), title: 'Teto: OTD se toda entrega fechasse na 1ª tentativa. A diferença para o OTD oficial é o que se perde em re-tentativas.' })
+        : '',
+      stat(g.atraso_medio_dias, 'Atraso médio (dias)'),
+      (() => { const nDev = _trkRows.filter(r => _DEVOLUCAO_STATUS.has(r.status)).length; return nDev ? `<div class="stat clic${_soDevolucao ? ' sel' : ''}" data-trk-devolucao title="Devoluções (CT-e de retorno + NF devolvida) — ocultas na lista por padrão; clique para ver só elas"><b style="color:var(--warn);">↩ ${nDev}</b>Devoluções</div>` : ''; })(),
+      g.entregue_sem_prazo ? stat(g.entregue_sem_prazo, 'Entregues s/ prazo', { st: 'ENTREGUE', color: 'var(--muted)', title: 'Entregues, mas sem prazo de tabela para comparar — ficam fora do OTD' }) : '',
+      g.sem_prazo ? stat(g.sem_prazo, 'Sem prazo', { st: 'SEM_PRAZO', color: 'var(--muted)', title: 'Não entregues e sem prazo de tabela' }) : '',
+      g.com_problema ? `<div class="stat clic${_soProblema ? ' sel' : ''}" data-trk-problema title="Entregas em aberto com tentativa frustrada (recusa/fechado/ausente/reentrega) — clique para ver só elas"><b style="color:#ea580c;">⚠️ ${g.com_problema}</b>Com problema${_problemaNovas ? ` <span class="prob-flag" style="margin-left:4px;">+${_problemaNovas} novas</span>` : ''}</div>` : '',
+      (() => { const emRota = _trkRows.filter(r => r.rota).length; return emRota ? `<div class="stat clic${_soRota ? ' sel' : ''}" data-trk-rota title="Entregas em aberto cujo último EDI é 'saída para entrega' — clique para ver só elas"><b style="color:#2563eb;">🚚 ${emRota}</b>Em rota de entrega</div>` : ''; })(),
+    ].join('');
+    trkKpis.querySelectorAll('[data-trk-status]').forEach(elm =>
+      elm.addEventListener('click', () => toggleTrkStatus(elm.dataset.trkStatus)));
+    const probCard = trkKpis.querySelector('[data-trk-problema]');
+    if (probCard) probCard.addEventListener('click', () => {
+      _soProblema = !_soProblema;
+      if (_soProblema) { _soRota = false; _marcarProblemasVistos(); }  // ao abrir, marca as atuais como vistas
+      renderTrkRows();
+      loadTrackingKpis();
+    });
+    const rotaCard = trkKpis.querySelector('[data-trk-rota]');
+    if (rotaCard) rotaCard.addEventListener('click', () => {
+      _soRota = !_soRota;
+      if (_soRota) _soProblema = false;
+      renderTrkRows();
+      loadTrackingKpis();
+    });
+    const devCard = trkKpis.querySelector('[data-trk-devolucao]');
+    if (devCard) devCard.addEventListener('click', () => _toggleDevolucoes());
+    trkSemVinculoCount.textContent = data.ocorrencias_sem_vinculo ? `(${data.ocorrencias_sem_vinculo})` : '(0)';
+    trkOtdBody.innerHTML = data.por_transportadora.map(t => `
+      <tr>
+        <td>${escapeHtml(t.transportadora)}</td>
+        <td class="num">${t.total}</td>
+        <td class="num">${t.entregues}</td>
+        <td class="num" style="color:${otdColor(t.otd_pct)};">${t.otd_pct === null ? '—' : t.otd_pct + '%'}</td>
+        <td class="num">${t.atraso_medio_dias}</td>
+        <td class="num">${t.em_transito}</td>
+        <td class="num" style="color:${t.atrasadas_abertas ? 'var(--bad)' : 'inherit'};">${t.atrasadas_abertas}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="7" style="color:var(--muted);">Sem dados ainda.</td></tr>';
+  } catch (e) { /* silencioso */ }
+}
+
+async function loadTrkMeses() {
+  try {
+    const resp = await fetch('/api/tracking/meses');
+    const meses = await resp.json();
+    mesMS.setOptions(meses.map(m => ({ value: m, label: m })));
+  } catch (e) { /* silencioso */ }
+}
+
+async function loadTrkUfs() {
+  try {
+    const resp = await fetch('/api/tracking/ufs');
+    const ufs = await resp.json();
+    ufMS.setOptions(ufs.map(u => ({ value: u, label: u })));
+  } catch (e) { /* silencioso */ }
+}
+
+async function loadCarrierList() {
+  try {
+    // união: transportadoras das tabelas + transportadoras com entregas no banco
+    // (ex.: Gran Cargo/Tecmar podem ter entregas mesmo sem tabela de frete)
+    const [mapResp, kpiResp] = await Promise.all([
+      fetch('/api/carrier-mapping'),
+      fetch('/api/tracking/kpis'),
+    ]);
+    const mapData = await mapResp.json();
+    const kpiData = await kpiResp.json();
+    const carriers = new Set(mapData.transportadoras_disponiveis || []);
+    (kpiData.por_transportadora || []).forEach(t => carriers.add(t.transportadora));
+    transpMS.setOptions([...carriers].sort((a, b) => a.localeCompare(b)).map(c => ({ value: c, label: c })));
+  } catch (e) { /* silencioso */ }
+}
+
+trkSemVinculoBtn.addEventListener('click', async () => {
+  if (trkSemVinculoPanel.style.display === 'none') {
+    const resp = await fetch('/api/tracking/ocorrencias-sem-vinculo');
+    const rows = await resp.json();
+    trkSemVinculoPanel.innerHTML = rows.length
+      ? `<div style="font-size:12px;color:var(--muted);margin-bottom:6px;">Ocorrências importadas cujo CTe ainda não foi auditado — serão vinculadas automaticamente quando o CTe correspondente for auditado na tela de <a href="/audit" style="color:var(--accent);">Auditoria</a>.</div>
+         <div style="overflow-x:auto;"><table>
+        <thead><tr><th>Data</th><th>NF</th><th>CNPJ emissor</th><th>Código</th><th>Descrição</th><th>Arquivo</th></tr></thead>
+        <tbody>` + rows.map(o => `
+          <tr>
+            <td>${fmtDate(o.data_ocorrencia)}${o.hora ? ' ' + escapeHtml(o.hora) : ''}</td>
+            <td>${escapeHtml(o.numero_nf)}${o.serie && o.serie !== '0' ? '/' + escapeHtml(o.serie) : ''}</td>
+            <td>${escapeHtml(o.cnpj_emissor)}</td>
+            <td>${escapeHtml(o.codigo)}</td>
+            <td><span class="cat-chip cat-${escapeHtml(o.categoria)}">${escapeHtml(o.categoria.replace(/_/g, ' '))}</span>${escapeHtml(o.descricao)}</td>
+            <td>${escapeHtml(o.arquivo_origem || '—')}</td>
+          </tr>`).join('') + `</tbody></table></div>`
+      : '<div class="empty">Nenhuma ocorrência pendente de vínculo. 👍</div>';
+    trkSemVinculoPanel.style.display = 'block';
+  } else {
+    trkSemVinculoPanel.style.display = 'none';
+  }
+});
+
+async function refreshTracking() {
+  await loadTracking();     // define _trkRows e calcula as "novas" de problema
+  loadTrackingKpis();       // renderiza os KPIs já com o contador de novas
+  loadTrkMeses();
+  loadTrkUfs();
+}
+
+// Card KPI como filtro cruzado: adiciona/remove o status do conjunto selecionado.
+function toggleTrkStatus(status) {
+  if (!status) { statusSel.clear(); }
+  else if (statusSel.has(status)) { statusSel.delete(status); }
+  else { statusSel.add(status); }
+  syncStatusUI();
+  refreshTracking();
+}
+
+document.getElementById('trkExportBtn').addEventListener('click', () => {
+  window.location.href = '/api/tracking/export.xlsx?' + trkParams().toString();
+  showToast('Gerando relatório… o download deve começar em instantes (confira a pasta Downloads).');
+});
+document.getElementById('trkExportCsvBtn').addEventListener('click', () => {
+  window.location.href = '/api/tracking/export?' + trkParams().toString();
+  showToast('Gerando CSV… confira a pasta Downloads.');
+});
+
+mesMS.onChange(refreshTracking);
+transpMS.onChange(refreshTracking);
+ufMS.onChange(refreshTracking);
+trkFilterBtn.addEventListener('click', refreshTracking);
+trkSearch.addEventListener('keydown', e => { if (e.key === 'Enter') refreshTracking(); });
+
+// Ocultar/mostrar entregues (persistido no navegador) — só re-renderiza a lista.
+const trkOcultarChk = document.getElementById('trkOcultarEntregues');
+function _setOcultarEntregues(v) {
+  _ocultarEntregues = v;
+  trkOcultarChk.checked = v;
+  try { localStorage.setItem('trkOcultarEntregues', v ? '1' : '0'); } catch (e) {}
+  renderTrkRows();
+}
+trkOcultarChk.checked = _ocultarEntregues;
+trkOcultarChk.addEventListener('change', () => _setOcultarEntregues(trkOcultarChk.checked));
+
+// Card "Devoluções": alterna mostrar SÓ as devoluções (ocultas por padrão).
+function _toggleDevolucoes(on) {
+  _soDevolucao = (on === undefined) ? !_soDevolucao : on;
+  if (_soDevolucao) { _soProblema = false; _soRota = false; }  // exclusivo
+  renderTrkRows();
+  loadTrackingKpis();
+}
+
+// Interligação: /tracking?search=XXX, ?status=A,B, ?mes=A,B, ?transportadora=A,B, ?uf=A,B pré-filtram a tela
+const _urlParams = new URLSearchParams(window.location.search);
+if (_urlParams.get('search')) trkSearch.value = _urlParams.get('search');
+(_urlParams.get('status') || '').split(',').map(s => s.trim()).filter(Boolean).forEach(s => statusSel.add(s));
+(_urlParams.get('mes') || '').split(',').map(s => s.trim()).filter(Boolean).forEach(s => mesMS.add(s));
+(_urlParams.get('transportadora') || '').split(',').map(s => s.trim()).filter(Boolean).forEach(s => transpMS.add(s));
+(_urlParams.get('uf') || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean).forEach(s => ufMS.add(s));
+syncStatusUI();
+mesMS.sync();
+transpMS.sync();
+ufMS.sync();
+
+loadCarrierList();
+refreshTracking();
+</script>
+
+<script src="/static/auth.js" defer></script>
+</body>
+</html>

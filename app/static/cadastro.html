@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cadastro de Tabelas — LogHub</title>
+<link rel="stylesheet" href="/static/volix.css" />
+<style>
+  /* Volix (tokens + menu lateral + cabeçalho) vem de /static/volix.css.
+     Aqui só o CSS específico do Cadastro + overrides desta tela. */
+  header p { max-width: 720px; }
+  main { max-width: 1560px; }
+
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 20px; }
+  .panel h2 { margin: 0 0 14px; font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+
+  input, select, textarea { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 9px 10px; font-size: 13px; font-family: inherit; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  input::placeholder { color: #4b5468; }
+  input[type=color] { padding: 3px; height: 38px; width: 52px; cursor: pointer; }
+  button, a.btn { background: var(--accent); color: #fff; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-size: 13px; text-decoration: none; display: inline-block; font-family: inherit; }
+  button:hover, a.btn:hover { opacity: .9; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  button.mini { padding: 5px 11px; font-size: 12px; }
+  button.ghost { background: transparent; border: 1px dashed var(--border); color: var(--muted); }
+  button.ghost:hover { border-color: var(--accent); color: var(--text); }
+  button.danger { background: transparent; border: 1px solid #5b1d20; color: #fca5a5; }
+  button.danger:hover { background: var(--bad-bg); }
+
+  /* ── Abas ── */
+  .tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border); margin-bottom: 20px; flex-wrap: wrap; }
+  .tabs button { background: transparent; color: var(--muted); border: none; border-bottom: 2px solid transparent; border-radius: 0; padding: 12px 16px; font-size: 13px; }
+  .tabs button.active { color: #fff; border-bottom-color: var(--volix); }
+  .tabpage { display: none; }
+  .tabpage.active { display: block; }
+
+  /* ── Formulário em grade ── */
+  .fgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+  label.fld { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--muted); }
+  label.fld input, label.fld select, label.fld textarea { width: 100%; }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); }
+  .check input { width: 16px; height: 16px; }
+  .sub-h { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 18px 0 4px; border-top: 1px dashed var(--border); padding-top: 14px; }
+  .actions { display: flex; gap: 10px; align-items: center; margin-top: 18px; flex-wrap: wrap; }
+
+  /* ── Tabelas ── */
+  .tbl-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+  table.grid { width: 100%; border-collapse: collapse; font-size: 12.5px; white-space: nowrap; }
+  table.grid th { background: #10151f; text-align: left; padding: 9px 10px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); position: sticky; top: 0; border-bottom: 1px solid var(--border); }
+  table.grid td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  table.grid tr:last-child td { border-bottom: none; }
+  table.grid tr:hover td { background: rgba(255,255,255,.02); }
+  table.grid input { padding: 6px 7px; font-size: 12.5px; }
+  table.grid input.w-uf { width: 46px; text-transform: uppercase; }
+  table.grid input.w-reg { width: 70px; }
+  table.grid input.w-desc { width: 210px; }
+  table.grid input.w-band { width: 62px; text-align: right; }
+  table.grid input.w-cep { width: 92px; }
+  table.grid input.w-num { width: 70px; text-align: right; }
+  table.grid input.w-city { width: 190px; }
+  table.grid td.win { background: rgba(34,197,94,.16); color: #86efac; font-weight: 700; }
+  table.grid td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.grid td.nocov { color: var(--muted); font-style: italic; }
+  .chip-win { background: var(--ok-bg); color: #86efac; border: 1px solid #1f5133; border-radius: 8px; padding: 8px 12px; font-size: 12.5px; }
+  .chip-win b { color: #bbf7d0; }
+  .row-del { background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 5px 9px; cursor: pointer; }
+  .row-del:hover { border-color: var(--bad); color: var(--bad); }
+
+  .list-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .list-tbl th { text-align: left; padding: 10px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); border-bottom: 1px solid var(--border); }
+  .list-tbl td { padding: 11px 10px; border-bottom: 1px solid var(--border); }
+  .list-tbl tr:hover td { background: rgba(255,255,255,.02); }
+  .dot { display: inline-block; width: 11px; height: 11px; border-radius: 3px; vertical-align: -1px; margin-right: 7px; }
+  .pill { font-size: 10.5px; padding: 2px 9px; border-radius: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+  .pill.on { background: var(--ok-bg); color: var(--ok); }
+  .pill.off { background: var(--bad-bg); color: #fca5a5; }
+  .cnpj-tags { color: var(--muted); font-size: 11.5px; }
+  .count { color: var(--muted); font-size: 12px; }
+
+  .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .toolbar .grow { flex: 1; }
+  .toolbar select, .toolbar input { min-width: 200px; }
+
+  .msg { font-size: 13px; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; display: none; }
+  .msg.err { background: var(--bad-bg); color: #fca5a5; border: 1px solid #5b1d20; display: block; }
+  .msg.ok { background: var(--ok-bg); color: #86efac; border: 1px solid #1f5133; display: block; }
+  .msg.info { background: #1c2331; color: var(--muted); border: 1px solid var(--border); display: block; }
+  .empty { color: var(--muted); font-size: 13px; padding: 30px 0; text-align: center; }
+  .hint { color: var(--muted); font-size: 11.5px; }
+
+  /* ── Modal ── */
+  .overlay { position: fixed; inset: 0; background: rgba(4,7,12,.7); display: none; align-items: flex-start; justify-content: center; padding: 40px 16px; z-index: 100; overflow-y: auto; }
+  .overlay.open { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 22px 24px; width: 100%; max-width: 720px; }
+  .modal h3 { margin: 0 0 4px; font-size: 17px; }
+  .modal .sub { color: var(--muted); font-size: 12px; margin-bottom: 16px; }
+  .spinner { display:inline-block; width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -2px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .vig-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin: 0 0 12px; font-size: 12.5px; }
+  .vig-bar .vig-atual { color: var(--muted); }
+  .vig-bar .vig-atual b { color: var(--text); }
+  .vig-bar details { font-size: 12px; color: var(--muted); }
+  .vig-bar summary { cursor: pointer; }
+  .vig-hist { margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }
+  .vig-hist .vig-row { font-variant-numeric: tabular-nums; }
+  .sim-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin: 0 0 12px; font-size: 12.5px; }
+  .sim-box > summary { cursor: pointer; color: var(--text); }
+  .sim-controls { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; margin: 10px 0; }
+  .sim-kpis { display: flex; gap: 10px; flex-wrap: wrap; margin: 6px 0 10px; }
+  .sim-kpis > div { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; min-width: 120px; }
+  .sim-kpis span { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+  .sim-kpis b { font-size: 18px; font-variant-numeric: tabular-nums; }
+  .sim-kpis .sim-delta { border-color: var(--accent); }
+  .sim-uf { width: auto; border-collapse: collapse; font-size: 12px; }
+  .sim-uf th, .sim-uf td { padding: 4px 10px; border-bottom: 1px solid var(--border); text-align: right; font-variant-numeric: tabular-nums; }
+  .sim-uf th:first-child, .sim-uf td:first-child { text-align: left; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <img class="brand-iso" width="42" height="42" src="/static/volix-selo-grafite.svg" alt="Volix">
+    <div class="volix">Log<b>H</b>ub</div>
+    <div class="glow"></div>
+    <div class="tag">Sua logística <b>num só lugar</b></div>
+  </div>
+  <nav class="side-nav">
+    <a href="/home">🏠 Início</a>
+    <div class="sec">Financeiro</div>
+    <a href="/audit">📋 Auditoria de CTe</a>
+    <a href="/percent-nf">💰 Frete sobre Faturamento</a>
+    <a href="/conferencia">🧾 Conferência de Fatura</a>
+    <div class="sec">Suprimentos</div>
+    <a href="/coletas">🚚 Coleta em Fornecedores</a>
+    <div class="sec">Expedição</div>
+    <a href="/romaneio">📦 Romaneio de Expedição</a>
+    <div class="sec">Entregas</div>
+    <a href="/tracking">🗼 Torre de Controle</a>
+    <a href="/relatorio-dia">📨 Relatório do Dia</a>
+    <a href="/scorecard">🏆 Scorecard de Desempenho</a>
+    <div class="sec">Comercial</div>    <a href="/vendas">📈 Análise de Vendas</a>
+    <div class="sec">Configuração</div>
+    <a href="/cadastro" class="active">🗂️ Cadastro de Tabelas</a>
+  </nav>
+</aside>
+
+<header>
+  <img class="vmark vmark-dark" width="40" height="40" src="/static/volix-selo-grafite.svg" alt="Volix"><img class="vmark vmark-light" width="40" height="40" src="/static/volix-selo-principal.svg" alt="Volix">
+  <h1>Cadastro de Tabelas</h1>
+  <p>Cadastro de tabelas de frete — a <b>base de acordo</b>. Transportadoras cadastradas aqui alimentam a auditoria, a torre de controle e os indicadores.</p>
+</header>
+
+<main>
+  <div id="msg" class="msg"></div>
+
+  <div class="tabs">
+    <button data-tab="transp" class="active">🚚 Transportadoras</button>
+    <button data-tab="preco">💲 Tabela de Preço</button>
+    <button data-tab="prazo">📅 Prazo de Entrega</button>
+    <button data-tab="comp">📊 Comparativo</button>
+  </div>
+
+  <!-- ══════════ ABA TRANSPORTADORAS ══════════ -->
+  <section id="tab-transp" class="tabpage active">
+    <div class="toolbar">
+      <div class="grow"><span class="count" id="transpCount"></span></div>
+      <a class="btn secondary" href="/api/cadastro/modelo.xlsx" title="Baixar o modelo padrão em branco">📥 Baixar modelo</a>
+      <button id="importPlanBtn" class="secondary" title="Importar uma planilha preenchida no modelo">📤 Importar planilha</button>
+      <input type="file" id="importPlanFile" accept=".xlsx,.xls" style="display:none;" />
+      <button id="importAllBtn" class="ghost" title="Importa para a base as transportadoras das planilhas Excel">⬇ Importar do Excel atual</button>
+      <button id="reloadBtn" class="secondary" title="Aplica o cadastro ao motor de frete">🔄 Aplicar ao motor</button>
+      <button id="novaBtn">＋ Nova transportadora</button>
+    </div>
+    <div class="panel" style="padding:0;">
+      <div class="tbl-wrap" style="border:none;">
+        <table class="list-tbl">
+          <thead><tr>
+            <th>Transportadora</th><th>Origem</th><th>CNPJs</th>
+            <th>Preço</th><th>Prazo</th><th>Meta OTD</th><th>Status</th><th></th>
+          </tr></thead>
+          <tbody id="transpBody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="transpEmpty" style="display:none;">Nenhuma transportadora na base ainda. Use “⬇ Importar todas do Excel” para trazer as tabelas atuais, ou “＋ Nova transportadora”.</div>
+    </div>
+  </section>
+
+  <!-- ══════════ ABA PREÇO ══════════ -->
+  <section id="tab-preco" class="tabpage">
+    <div class="toolbar">
+      <label class="fld" style="min-width:240px;">Transportadora
+        <select id="precoTransp"></select>
+      </label>
+      <div class="grow"></div>
+      <button id="precoImport" class="ghost" title="Copia a aba do Excel de mesmo nome para o banco">⬇ Importar da planilha atual</button>
+      <button id="precoAdd" class="secondary">＋ Linha</button>
+      <button id="precoSave">💾 Salvar preços</button>
+    </div>
+    <div id="vigBar" class="vig-bar" style="display:none;">
+      <span class="vig-atual">Vigência: <b id="vigAtual">—</b></span>
+      <button type="button" class="ghost mini" id="vigReajusteBtn" title="Arquiva a tabela atual e abre uma nova vigência a partir de uma data. CTes emitidos antes passam a ser auditados contra a tabela arquivada.">🗓️ Registrar reajuste</button>
+      <details id="vigHist" style="display:none;"><summary>Histórico de vigências</summary>
+        <div id="vigHistBody" class="vig-hist"></div>
+      </details>
+    </div>
+    <details id="simBox" class="sim-box" style="display:none;">
+      <summary>📊 Simulador de reajuste (impacto sobre os CTes já auditados)</summary>
+      <div class="sim-controls">
+        <label class="fld">Reajuste % <input id="simPct" type="number" step="0.1" value="8" style="width:80px;"></label>
+        <label class="fld">Mês (opcional) <input id="simMes" type="month" style="width:150px;"></label>
+        <button type="button" class="secondary" id="simBtn">Simular</button>
+      </div>
+      <div id="simResult" class="sim-result"></div>
+    </details>
+    <p class="hint" style="margin:0 0 12px;">Faixas de peso em R$ por faixa (ex.: coluna “≤30” = frete até 30&nbsp;kg). Excedentes: <b>exc.150/200</b> = R$/kg acima da faixa; <b>&gt;200/kg</b>, <b>&gt;1000/kg</b>, <b>&gt;4000/kg</b> = R$/kg. Ad&nbsp;valorem/Frete&nbsp;valor como no acordo (fração da NF). Deixe em branco o que não existir.</p>
+    <div class="tbl-wrap">
+      <table class="grid" id="precoTable">
+        <thead><tr id="precoHead"></tr></thead>
+        <tbody id="precoBody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="precoEmpty" style="display:none;">Selecione uma transportadora para editar a tabela de preço.</div>
+  </section>
+
+  <!-- ══════════ ABA PRAZO ══════════ -->
+  <section id="tab-prazo" class="tabpage">
+    <div class="toolbar">
+      <label class="fld" style="min-width:240px;">Transportadora
+        <select id="prazoTransp"></select>
+      </label>
+      <input id="prazoSearch" placeholder="🔎 buscar cidade / UF / região" />
+      <button id="prazoClear" class="ghost mini" title="Limpar filtro e mostrar todas as cidades" style="display:none;">✕ limpar filtro</button>
+      <div class="grow"></div>
+      <button id="prazoImport" class="ghost" title="Copia a aba do Excel de mesmo nome para o banco">⬇ Importar da planilha atual</button>
+      <button id="prazoAdd" class="secondary">＋ Linha</button>
+      <button id="prazoSave">💾 Salvar prazos</button>
+    </div>
+    <p class="hint" style="margin:0 0 12px;">Prazo em dias úteis por cidade/UF. O CEP inicial/final (opcional, 8 dígitos) tem prioridade no casamento; sem CEP, casa por cidade+UF. Região = código de zona do acordo (ex.: <b>ES040</b>).</p>
+    <div class="tbl-wrap">
+      <table class="grid" id="prazoTable">
+        <thead><tr>
+          <th>UF</th><th>Cidade</th><th>Região</th><th>CEP inicial</th><th>CEP final</th><th>Prazo (dias)</th><th></th>
+        </tr></thead>
+        <tbody id="prazoBody"></tbody>
+      </table>
+    </div>
+    <div class="toolbar" id="prazoPager" style="margin-top:12px; display:none;">
+      <button id="prazoPrev" class="secondary mini">← Anterior</button>
+      <span class="count" id="prazoPageInfo"></span>
+      <button id="prazoNext" class="secondary mini">Próxima →</button>
+    </div>
+    <div class="empty" id="prazoEmpty" style="display:none;">Selecione uma transportadora para editar os prazos.</div>
+  </section>
+
+  <!-- ══════════ ABA COMPARATIVO ══════════ -->
+  <section id="tab-comp" class="tabpage">
+    <div class="toolbar">
+      <label class="fld" style="min-width:150px;">CEP de destino
+        <input id="compCep" inputmode="numeric" placeholder="01310-100" />
+      </label>
+      <label class="fld" style="min-width:260px;">Conjunto <span class="hint">puxa o peso do Olist</span>
+        <select id="compConjunto"><option value="">— carregando conjuntos… —</option></select>
+      </label>
+      <label class="fld" style="min-width:150px;">ou código/SKU
+        <input id="compConjCodigo" placeholder="CJK4I57F2GR0" />
+      </label>
+      <label class="fld" style="min-width:110px;">Peso (kg) <span class="hint">opcional</span>
+        <input id="compPeso" inputmode="numeric" placeholder="30" />
+      </label>
+      <label class="fld" style="min-width:130px;">Valor NF (R$) <span class="hint">opcional</span>
+        <input id="compValor" inputmode="numeric" placeholder="1000" />
+      </label>
+      <button id="compBtn" style="align-self:flex-end;">📊 Comparar</button>
+    </div>
+    <p class="hint" style="margin:0 0 6px;">Compara a tabela de cada transportadora para o destino informado: valor do frete por faixa de peso e as generalidades (GRIS, TAS, pedágio, despacho, ad valorem). A célula <b style="color:var(--ok)">verde</b> é a mais barata de cada coluna. Informe peso e valor para ver também o total simulado. Escolha um <b>Conjunto</b> para puxar o peso automaticamente do Olist (o maior entre bruto e cubado).</p>
+    <div id="compConjInfo" class="hint" style="margin:0 0 12px; min-height:16px;"></div>
+    <div id="compResumo" class="row" style="gap:10px; margin-bottom:14px; flex-wrap:wrap;"></div>
+    <div class="tbl-wrap">
+      <table class="grid" id="compTable">
+        <thead><tr id="compHead"></tr></thead>
+        <tbody id="compBody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="compEmpty">Informe um CEP de destino e clique em “Comparar”.</div>
+  </section>
+</main>
+
+<!-- ══════════ MODAL TRANSPORTADORA ══════════ -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3 id="modalTitle">Nova transportadora</h3>
+    <div class="sub">Nome, CNPJs e metas viram a base de acordo usada em todos os painéis.</div>
+    <input type="hidden" id="fId" />
+    <div class="fgrid">
+      <label class="fld">Nome (identificador) *
+        <input id="fNome" placeholder="Ex.: Jamef" />
+      </label>
+      <label class="fld">Apelido
+        <input id="fApelido" placeholder="Nome fantasia (opcional)" />
+      </label>
+      <label class="fld">Origem
+        <input id="fOrigem" placeholder="Ex.: Viana-ES" />
+      </label>
+      <label class="fld">Cor (gráficos)
+        <input type="color" id="fCor" value="#8bc34a" />
+      </label>
+    </div>
+    <label class="fld" style="margin-top:14px;">CNPJs emitentes (um por linha ou separados por vírgula)
+      <textarea id="fCnpjs" rows="2" placeholder="00.000.000/0001-00, 11.111.111/0001-11"></textarea>
+    </label>
+    <label class="check" style="margin-top:14px;"><input type="checkbox" id="fAtivo" checked /> Ativa (entra nas cotações/auditoria)</label>
+
+    <div class="sub-h">Metas de serviço</div>
+    <div class="fgrid">
+      <label class="fld">Meta OTD (%)
+        <input id="fMetaOtd" type="number" step="0.1" value="95" />
+      </label>
+      <label class="fld">Atenção OTD (%)
+        <input id="fAtencaoOtd" type="number" step="0.1" value="85" />
+      </label>
+      <label class="fld">Tolerância divergência (R$)
+        <input id="fTolAbs" type="number" step="0.01" value="1" />
+      </label>
+      <label class="fld">Tolerância divergência (%)
+        <input id="fTolPct" type="number" step="0.1" value="2" />
+      </label>
+    </div>
+
+    <div class="sub-h">Encargos padrão do acordo (usados no cálculo do frete)</div>
+    <div class="fgrid">
+      <label class="fld">GRIS (%)
+        <input id="fGrisPct" type="number" step="0.001" placeholder="0,190" />
+      </label>
+      <label class="fld">GRIS mínimo (R$)
+        <input id="fGrisMin" type="number" step="0.01" placeholder="6,70" />
+      </label>
+      <label class="fld">POS (%)
+        <input id="fPosPct" type="number" step="0.0001" placeholder="0,15" />
+      </label>
+      <label class="fld">POS mínimo (R$)
+        <input id="fPosMin" type="number" step="0.01" placeholder="11,00" />
+      </label>
+      <label class="fld">TRT (%)
+        <input id="fTrtPct" type="number" step="0.01" placeholder="0,0" />
+      </label>
+      <label class="fld">TRT mínimo (R$)
+        <input id="fTrtMin" type="number" step="0.01" placeholder="5,10" />
+      </label>
+      <label class="fld">Pedágio ref (R$/100kg)
+        <input id="fPedagioRef" type="number" step="0.01" placeholder="8,00" />
+      </label>
+      <label class="fld">TAS (R$)
+        <input id="fTas" type="number" step="0.01" placeholder="5,22" />
+      </label>
+      <label class="fld">Despacho (R$)
+        <input id="fDespacho" type="number" step="0.01" placeholder="0,00" />
+      </label>
+      <label class="fld">TEC (%)
+        <input id="fTecPct" type="number" step="0.01" placeholder="0,0" />
+      </label>
+      <label class="fld">Cubagem (kg/m³)
+        <input id="fCubagem" type="number" step="1" placeholder="300" />
+      </label>
+    </div>
+    <label class="check" style="margin-top:12px;"><input type="checkbox" id="fIcmsEmbutido" /> ICMS já incluído na tarifa (bruta) — não somar por cima, só informar</label>
+
+    <div class="actions" style="justify-content:space-between;">
+      <button id="fDelete" class="danger" style="display:none;">Excluir</button>
+      <div style="display:flex; gap:10px;">
+        <button id="fCancel" class="secondary">Cancelar</button>
+        <button id="fSave">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const api = (p, opts) => fetch(p, opts).then(async r => {
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.detail || ('Erro ' + r.status));
+  return body;
+});
+function toast(text, kind='ok') {
+  const m = $('#msg'); m.className = 'msg ' + kind; m.textContent = text;
+  if (kind === 'ok') setTimeout(() => { if (m.textContent === text) m.className = 'msg'; }, 4000);
+}
+const numOrNull = (v) => { const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? null : n; };
+
+// Faixas de peso conhecidas (ordem de exibição) + rótulos amigáveis.
+const BANDAS = ['f10','f20','f30','f50','f60','f70','f75','f100','f150','f200','exc_150','exc_200','ac200','ac1000','ac4000'];
+const BANDA_LABEL = {
+  f10:'≤10', f20:'≤20', f30:'≤30', f50:'≤50', f60:'≤60', f70:'≤70', f75:'≤75', f100:'≤100', f150:'≤150', f200:'≤200',
+  exc_150:'exc.150', exc_200:'exc.200', ac200:'>200/kg', ac1000:'>1000/kg', ac4000:'>4000/kg'
+};
+
+let TRANSPS = [];   // lista de transportadoras
+let precoBands = []; // colunas de faixa em uso na aba preço
+
+// ─── Abas ───
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tabs button').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.tabpage').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  $('#tab-' + b.dataset.tab).classList.add('active');
+  if (b.dataset.tab === 'comp') loadConjuntos();
+});
+
+// ═══════════ TRANSPORTADORAS ═══════════
+async function loadTransps() {
+  TRANSPS = await api('/api/cadastro/transportadoras');
+  const body = $('#transpBody');
+  body.innerHTML = '';
+  $('#transpEmpty').style.display = TRANSPS.length ? 'none' : 'block';
+  $('#transpCount').textContent = TRANSPS.length + ' transportadora(s) na base de acordo';
+  for (const t of TRANSPS) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="dot" style="background:${t.cor||'#8bc34a'}"></span><b>${t.nome}</b>${t.apelido ? ` <span class="hint">· ${t.apelido}</span>` : ''}</td>
+      <td>${t.origem || '—'}</td>
+      <td class="cnpj-tags">${(t.cnpjs||[]).map(fmtCnpj).join('<br>') || '—'}</td>
+      <td class="count">${t.linhas_preco}</td>
+      <td class="count">${t.linhas_prazo}</td>
+      <td class="count">${(t.meta_otd ?? 95)}%</td>
+      <td><span class="pill ${t.ativo?'on':'off'}">${t.ativo?'ativa':'inativa'}</span></td>
+      <td style="white-space:nowrap;">
+        <a class="row-del" href="/api/cadastro/transportadoras/${t.id}/export.xlsx" aria-label="Exportar planilha de ${t.nome}" title="Exportar planilha desta transportadora" style="text-decoration:none;">⬇</a>
+        <button type="button" class="row-del" data-id="${t.id}" aria-label="Editar ${t.nome}" title="Editar transportadora">✎</button>
+      </td>`;
+    tr.querySelector('button').onclick = () => openModal(t);
+    body.appendChild(tr);
+  }
+  // popular selects das outras abas
+  for (const selId of ['#precoTransp', '#prazoTransp']) {
+    const sel = $(selId); const cur = sel.value;
+    sel.innerHTML = '<option value="">— selecione —</option>' +
+      TRANSPS.map(t => `<option value="${t.id}">${t.nome}</option>`).join('');
+    if (cur) sel.value = cur;
+  }
+}
+
+function fmtCnpj(c) {
+  const d = String(c).replace(/\D/g, '').padStart(14, '0');
+  return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+}
+
+// ─── Modal ───
+function openModal(t) {
+  const isNew = !t;
+  $('#modalTitle').textContent = isNew ? 'Nova transportadora' : 'Editar ' + t.nome;
+  $('#fId').value = t ? t.id : '';
+  $('#fNome').value = t ? t.nome : '';
+  $('#fApelido').value = t ? (t.apelido||'') : '';
+  $('#fOrigem').value = t ? (t.origem||'') : '';
+  $('#fCor').value = t ? (t.cor||'#8bc34a') : '#8bc34a';
+  $('#fCnpjs').value = t ? (t.cnpjs||[]).map(fmtCnpj).join('\n') : '';
+  $('#fAtivo').checked = t ? !!t.ativo : true;
+  $('#fMetaOtd').value = t ? (t.meta_otd ?? 95) : 95;
+  $('#fAtencaoOtd').value = t ? (t.atencao_otd ?? 85) : 85;
+  $('#fTolAbs').value = t ? (t.tol_div_abs ?? 1) : 1;
+  $('#fTolPct').value = t ? (t.tol_div_pct ?? 2) : 2;
+  // gris_pct e tec_pct são fração no motor → exibir em %
+  $('#fGrisPct').value = t && t.gris_pct != null ? +(t.gris_pct * 100).toFixed(4) : '';
+  $('#fGrisMin').value = t ? (t.gris_min || '') : '';
+  $('#fPosPct').value = t && t.pos_pct != null ? +(t.pos_pct * 100).toFixed(4) : '';
+  $('#fPosMin').value = t ? (t.pos_min || '') : '';
+  $('#fTrtPct').value = t && t.trt_pct != null ? +(t.trt_pct * 100).toFixed(4) : '';
+  $('#fTrtMin').value = t ? (t.trt_min || '') : '';
+  $('#fIcmsEmbutido').checked = t ? !!t.icms_embutido : false;
+  $('#fPedagioRef').value = t ? (t.pedagio_ref || '') : '';
+  $('#fTas').value = t ? (t.tas || '') : '';
+  $('#fDespacho').value = t ? (t.despacho || '') : '';
+  $('#fTecPct').value = t && t.tec_pct != null ? +(t.tec_pct * 100).toFixed(4) : '';
+  $('#fCubagem').value = t ? (t.cubagem_fator || '') : '';
+  $('#fDelete').style.display = isNew ? 'none' : 'inline-block';
+  $('#fDelete').dataset.id = t ? t.id : '';
+  $('#overlay').classList.add('open');
+}
+function closeModal() { $('#overlay').classList.remove('open'); }
+$('#novaBtn').onclick = () => openModal(null);
+$('#fCancel').onclick = closeModal;
+$('#overlay').onclick = (e) => { if (e.target === $('#overlay')) closeModal(); };
+
+$('#fSave').onclick = async () => {
+  const nome = $('#fNome').value.trim();
+  if (!nome) { toast('Informe o nome da transportadora.', 'err'); return; }
+  const cnpjs = $('#fCnpjs').value.split(/[\n,;]+/).map(s => s.replace(/\D/g,'')).filter(Boolean);
+  const grisPct = numOrNull($('#fGrisPct').value);
+  const tecPct = numOrNull($('#fTecPct').value);
+  const posPct = numOrNull($('#fPosPct').value);
+  const trtPct = numOrNull($('#fTrtPct').value);
+  const payload = {
+    nome, apelido: $('#fApelido').value.trim(), origem: $('#fOrigem').value.trim(),
+    cor: $('#fCor').value, ativo: $('#fAtivo').checked, cnpjs,
+    meta_otd: numOrNull($('#fMetaOtd').value), atencao_otd: numOrNull($('#fAtencaoOtd').value),
+    tol_div_abs: numOrNull($('#fTolAbs').value), tol_div_pct: numOrNull($('#fTolPct').value),
+    gris_pct: grisPct == null ? null : grisPct / 100,
+    gris_min: numOrNull($('#fGrisMin').value),
+    pos_pct: posPct == null ? null : posPct / 100,
+    pos_min: numOrNull($('#fPosMin').value),
+    trt_pct: trtPct == null ? null : trtPct / 100,
+    trt_min: numOrNull($('#fTrtMin').value),
+    icms_embutido: $('#fIcmsEmbutido').checked ? 1 : 0,
+    pedagio_ref: numOrNull($('#fPedagioRef').value),
+    tas: numOrNull($('#fTas').value), despacho: numOrNull($('#fDespacho').value),
+    tec_pct: tecPct == null ? null : tecPct / 100,
+    cubagem_fator: numOrNull($('#fCubagem').value),
+  };
+  Object.keys(payload).forEach(k => payload[k] == null && delete payload[k]);
+  const id = $('#fId').value;
+  try {
+    if (id) await api('/api/cadastro/transportadoras/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    else await api('/api/cadastro/transportadoras', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    closeModal(); await loadTransps();
+    toast(id ? 'Transportadora atualizada.' : 'Transportadora cadastrada.');
+  } catch (e) { toast(e.message, 'err'); }
+};
+
+$('#fDelete').onclick = async () => {
+  const id = $('#fDelete').dataset.id;
+  if (!id || !confirm('Excluir esta transportadora e todas as suas tabelas de preço/prazo?')) return;
+  try {
+    await api('/api/cadastro/transportadoras/' + id, { method:'DELETE' });
+    closeModal(); await loadTransps(); toast('Transportadora excluída.');
+  } catch (e) { toast(e.message, 'err'); }
+};
+
+$('#importPlanBtn').onclick = () => $('#importPlanFile').click();
+$('#importPlanFile').onchange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const fd = new FormData(); fd.append('file', file);
+  $('#importPlanBtn').disabled = true;
+  toast('Importando ' + file.name + '…', 'info');
+  try {
+    const r = await api('/api/cadastro/importar', { method:'POST', body: fd });
+    await loadTransps();
+    toast(`Transportadora ${r.transportadora} ${r.acao}: ${r.precos} preço(s) e ${r.prazos} prazo(s) importados. Já vale nas cotações.`);
+  } catch (err) { toast('Falha na importação: ' + err.message, 'err'); }
+  finally { $('#importPlanBtn').disabled = false; e.target.value = ''; }
+};
+
+$('#importAllBtn').onclick = async () => {
+  if (!confirm('Importar para a base todas as transportadoras das planilhas Excel que ainda não estão cadastradas (com preços, prazos e CNPJs)?')) return;
+  $('#importAllBtn').disabled = true;
+  try {
+    const r = await api('/api/cadastro/importar-todas', { method:'POST' });
+    await loadTransps();
+    toast(r.importadas.length ? `Importadas ${r.importadas.length}: ${r.importadas.join(', ')}.` : 'Nada a importar — todas as transportadoras do Excel já estão na base.');
+  } catch (e) { toast(e.message, 'err'); }
+  finally { $('#importAllBtn').disabled = false; }
+};
+
+$('#reloadBtn').onclick = async () => {
+  $('#reloadBtn').disabled = true;
+  try {
+    const r = await api('/api/cadastro/reload', { method:'POST' });
+    toast(`Motor atualizado. ${r.precos.length} tabela(s) de preço e ${r.prazos.length} de prazo ativas.`);
+  } catch (e) { toast(e.message, 'err'); }
+  finally { $('#reloadBtn').disabled = false; }
+};
+
+// ═══════════ TABELA DE PREÇO ═══════════
+$('#precoTransp').onchange = loadPrecos;
+async function loadPrecos() {
+  const id = $('#precoTransp').value;
+  if (!id) { $('#precoEmpty').style.display = 'block'; $('#precoBody').innerHTML=''; $('#precoHead').innerHTML=''; $('#vigBar').style.display='none'; return; }
+  $('#precoEmpty').style.display = 'none';
+  loadVigencia(id);
+  $('#simBox').style.display = ''; $('#simResult').innerHTML = '';
+  const linhas = await api(`/api/cadastro/transportadoras/${id}/precos`);
+  // colunas de faixa = padrão + quaisquer extras presentes nos dados
+  const extra = new Set();
+  linhas.forEach(l => Object.keys(l.faixas||{}).forEach(k => extra.add(k)));
+  const base = ['f10','f20','f30','f50','f60','f70','f75','f100','f150','f200','exc_150','ac200'];
+  precoBands = BANDAS.filter(b => base.includes(b) || extra.has(b));
+  renderPrecoHead();
+  $('#precoBody').innerHTML = '';
+  if (!linhas.length) addPrecoRow();
+  else linhas.forEach(addPrecoRow);
+}
+function renderPrecoHead() {
+  $('#precoHead').innerHTML =
+    '<th>UF</th><th>Região</th><th>Descrição</th>' +
+    precoBands.map(b => `<th title="${b}">${BANDA_LABEL[b]||b}</th>`).join('') +
+    '<th>AdVal.</th><th>FreteVal</th><th>Sec/Cat</th><th>Pedágio</th><th title="Vazio = usa o padrão do acordo">Despacho</th><th></th>';
+}
+function addPrecoRow(l) {
+  l = l || { uf:'', regiao:'', descricao:'', faixas:{}, advalorem_pct:'', frete_val_pct:'', sec_cat:'', pedagio_col:'' };
+  const tr = document.createElement('tr');
+  const bandInputs = precoBands.map(b =>
+    `<td><input class="w-band pf" data-band="${b}" value="${l.faixas && l.faixas[b] != null ? l.faixas[b] : ''}" /></td>`).join('');
+  tr.innerHTML = `
+    <td><input class="w-uf pv" data-k="uf" value="${l.uf||''}" /></td>
+    <td><input class="w-reg pv" data-k="regiao" value="${l.regiao||''}" /></td>
+    <td><input class="w-desc pv" data-k="descricao" value="${(l.descricao||'').replace(/"/g,'&quot;')}" /></td>
+    ${bandInputs}
+    <td><input class="w-num pv" data-k="advalorem_pct" value="${l.advalorem_pct||''}" /></td>
+    <td><input class="w-num pv" data-k="frete_val_pct" value="${l.frete_val_pct||''}" /></td>
+    <td><input class="w-num pv" data-k="sec_cat" value="${l.sec_cat||''}" /></td>
+    <td><input class="w-num pv" data-k="pedagio_col" value="${l.pedagio_col||''}" /></td>
+    <td><input class="w-num pv" data-k="despacho" value="${l.despacho!=null?l.despacho:''}" placeholder="acordo" /></td>
+    <td><button type="button" class="row-del" aria-label="Remover esta linha de preço" title="Remover esta linha de preço">✕</button></td>`;
+  tr.querySelector('.row-del').onclick = () => tr.remove();
+  $('#precoBody').appendChild(tr);
+}
+// ── Vigência de tabela ──
+function _fmtD(s){ if(!s) return '—'; const p=String(s).slice(0,10).split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:s; }
+function _escV(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+async function loadVigencia(id){
+  const bar = $('#vigBar');
+  try {
+    const v = await api(`/api/cadastro/transportadoras/${id}/vigencias`);
+    bar.style.display = 'flex';
+    $('#vigAtual').textContent = v.vigencia_atual_inicio
+      ? ('atual desde ' + _fmtD(v.vigencia_atual_inicio))
+      : 'sempre valeu (sem reajuste registrado)';
+    const arq = v.arquivadas || [];
+    $('#vigHist').style.display = arq.length ? '' : 'none';
+    $('#vigHistBody').innerHTML = arq.map(a =>
+      `<div class="vig-row">${_fmtD(a.vigencia_inicio)} → ${_fmtD(a.vigencia_fim)}${a.descricao ? ' · ' + _escV(a.descricao) : ''}</div>`).join('');
+  } catch (e) { bar.style.display = 'none'; }
+}
+$('#vigReajusteBtn').onclick = async () => {
+  const id = $('#precoTransp').value;
+  if (!id) { toast('Selecione uma transportadora.', 'err'); return; }
+  const d = prompt('Nova tabela vale a partir de qual data? (AAAA-MM-DD)\n\nA tabela ATUAL será arquivada até a véspera dessa data. CTes emitidos antes passam a ser auditados contra a tabela arquivada; depois, contra a nova (que você edita e salva a seguir).');
+  if (!d) return;
+  const desc = prompt('Descrição do reajuste (opcional), ex.: "Reajuste anual +8%":', '') || '';
+  try {
+    const r = await api(`/api/cadastro/transportadoras/${id}/vigencia`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vigencia_inicio: d.trim(), descricao: desc.trim() }) });
+    toast(`Reajuste registrado. Tabela anterior arquivada até ${_fmtD(r.arquivada_ate)}. Agora edite os valores novos e clique em “Salvar preços”.`);
+    loadVigencia(id);
+  } catch (e) { toast(e.message, 'err'); }
+};
+
+// ── Simulador de reajuste ──
+const _money = v => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+$('#simBtn').onclick = async () => {
+  const id = $('#precoTransp').value;
+  if (!id) { toast('Selecione uma transportadora.', 'err'); return; }
+  const pct = parseFloat($('#simPct').value);
+  if (isNaN(pct)) { toast('Informe o % de reajuste.', 'err'); return; }
+  const mes = $('#simMes').value;
+  $('#simResult').innerHTML = '<span class="hint">Simulando sobre os CTes já auditados…</span>';
+  try {
+    const qs = new URLSearchParams({ pct: String(pct) });
+    if (mes) qs.set('mes', mes);
+    const r = await api(`/api/cadastro/transportadoras/${id}/simular-reajuste?` + qs.toString());
+    if (!r.ctes) { $('#simResult').innerHTML = '<span class="hint">Nenhum CTe auditado para simular neste período.</span>'; return; }
+    const sg = v => (v >= 0 ? '+' : '');
+    $('#simResult').innerHTML =
+      `<div class="sim-kpis">
+        <div><span>CTes</span><b>${r.ctes.toLocaleString('pt-BR')}</b></div>
+        <div><span>Custo atual</span><b>${_money(r.custo_atual)}</b></div>
+        <div><span>Com ${pct}%</span><b>${_money(r.custo_simulado)}</b></div>
+        <div class="sim-delta"><span>Impacto</span><b>${sg(r.delta)}${_money(r.delta)} (${sg(r.delta_pct)}${r.delta_pct}%)</b></div>
+      </div>` +
+      (r.sem_cobertura ? `<div class="hint">${r.sem_cobertura} CTe(s) sem cobertura na tabela — ignorados.</div>` : '') +
+      `<table class="sim-uf"><thead><tr><th>UF</th><th>CTes</th><th>Atual</th><th>Simulado</th><th>Δ</th></tr></thead><tbody>` +
+      r.por_uf.slice(0, 15).map(u => `<tr><td>${u.uf}</td><td>${u.ctes}</td><td>${_money(u.atual)}</td><td>${_money(u.simulado)}</td><td>${sg(u.delta)}${_money(u.delta)}</td></tr>`).join('') +
+      `</tbody></table>`;
+  } catch (e) { $('#simResult').innerHTML = `<span class="hint" style="color:var(--bad)">${e.message}</span>`; }
+};
+
+$('#precoAdd').onclick = () => { if ($('#precoTransp').value) addPrecoRow(); else toast('Selecione uma transportadora.', 'err'); };
+$('#precoSave').onclick = async () => {
+  const id = $('#precoTransp').value;
+  if (!id) { toast('Selecione uma transportadora.', 'err'); return; }
+  const linhas = [];
+  $('#precoBody').querySelectorAll('tr').forEach(tr => {
+    const row = { faixas:{} };
+    tr.querySelectorAll('.pv').forEach(i => {
+      const k = i.dataset.k;
+      if (k === 'uf' || k === 'regiao' || k === 'descricao') row[k] = i.value.trim();
+      else if (k === 'despacho') { const n = numOrNull(i.value); if (n !== null) row.despacho = n; }
+      else row[k] = numOrNull(i.value) || 0;
+    });
+    tr.querySelectorAll('.pf').forEach(i => { const n = numOrNull(i.value); if (n != null) row.faixas[i.dataset.band] = n; });
+    if (row.uf || row.regiao || Object.keys(row.faixas).length) linhas.push(row);
+  });
+  try {
+    await api(`/api/cadastro/transportadoras/${id}/precos`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(linhas) });
+    toast(`${linhas.length} linha(s) de preço salvas. Clique em “Aplicar ao motor” para valer nas cotações.`);
+    await loadTransps();
+  } catch (e) { toast(e.message, 'err'); }
+};
+$('#precoImport').onclick = () => importExcel($('#precoTransp').value, loadPrecos);
+
+// ═══════════ PRAZO DE ENTREGA ═══════════
+let prazoPage = 0; const PRAZO_LIMIT = 300; let prazoTotal = 0; let prazoDirty = false;
+$('#prazoTransp').onchange = () => { prazoPage = 0; loadPrazos(); };
+$('#prazoSearch').oninput = debounce(() => { prazoPage = 0; loadPrazos(); }, 350);
+$('#prazoClear').onclick = () => { $('#prazoSearch').value = ''; prazoPage = 0; loadPrazos(); };
+$('#prazoPrev').onclick = () => { if (prazoPage > 0) { prazoPage--; loadPrazos(); } };
+$('#prazoNext').onclick = () => { if ((prazoPage+1)*PRAZO_LIMIT < prazoTotal) { prazoPage++; loadPrazos(); } };
+
+function debounce(fn, ms) { let h; return (...a) => { clearTimeout(h); h = setTimeout(() => fn(...a), ms); }; }
+
+async function loadPrazos() {
+  const id = $('#prazoTransp').value;
+  if (!id) { $('#prazoEmpty').style.display='block'; $('#prazoBody').innerHTML=''; $('#prazoPager').style.display='none'; return; }
+  $('#prazoEmpty').style.display = 'none';
+  const search = $('#prazoSearch').value.trim();
+  $('#prazoClear').style.display = search ? 'inline-flex' : 'none';
+  const r = await api(`/api/cadastro/transportadoras/${id}/prazos?limit=${PRAZO_LIMIT}&offset=${prazoPage*PRAZO_LIMIT}` + (search ? `&search=${encodeURIComponent(search)}` : ''));
+  prazoTotal = r.total;
+  $('#prazoBody').innerHTML = '';
+  if (!r.linhas.length && !search) addPrazoRow();
+  else r.linhas.forEach(addPrazoRow);
+  const pages = Math.ceil(prazoTotal / PRAZO_LIMIT) || 1;
+  $('#prazoPager').style.display = prazoTotal > PRAZO_LIMIT ? 'flex' : 'none';
+  $('#prazoPageInfo').textContent = `${prazoTotal} linha(s) · página ${prazoPage+1}/${pages}` + (search ? ' (filtrado)' : '');
+}
+function addPrazoRow(l) {
+  l = l || { uf:'', cidade:'', regiao:'', cep_inicial:'', cep_final:'', prazo_dias:'' };
+  const tr = document.createElement('tr');
+  if (l.id) tr.dataset.id = l.id;
+  tr.innerHTML = `
+    <td><input class="w-uf zk" data-k="uf" value="${l.uf||''}" /></td>
+    <td><input class="w-city zk" data-k="cidade" value="${(l.cidade||'').replace(/"/g,'&quot;')}" /></td>
+    <td><input class="w-reg zk" data-k="regiao" value="${l.regiao||''}" /></td>
+    <td><input class="w-cep zk" data-k="cep_inicial" value="${l.cep_inicial||''}" /></td>
+    <td><input class="w-cep zk" data-k="cep_final" value="${l.cep_final||''}" /></td>
+    <td><input class="w-num zk" data-k="prazo_dias" value="${l.prazo_dias||''}" /></td>
+    <td><button type="button" class="row-del" aria-label="Excluir esta linha de prazo" title="Excluir esta linha de prazo">✕</button></td>`;
+  // Linha já existente no banco: o ✕ apaga NO BANCO (senão o upsert a manteria).
+  // Linha nova (sem id): só remove do DOM.
+  tr.querySelector('.row-del').onclick = async () => {
+    const id = tr.dataset.id;
+    if (id) {
+      if (!confirm('Excluir esta linha de prazo do banco?')) return;
+      const tid = $('#prazoTransp').value;
+      try {
+        await api(`/api/cadastro/transportadoras/${tid}/prazos/${id}`, { method:'DELETE' });
+        prazoTotal = Math.max(0, prazoTotal - 1);
+      } catch (e) { toast(e.message, 'err'); return; }
+    }
+    tr.remove();
+  };
+  $('#prazoBody').appendChild(tr);
+}
+$('#prazoAdd').onclick = () => { if ($('#prazoTransp').value) addPrazoRow(); else toast('Selecione uma transportadora.', 'err'); };
+$('#prazoSave').onclick = async () => {
+  const id = $('#prazoTransp').value;
+  if (!id) { toast('Selecione uma transportadora.', 'err'); return; }
+  // Upsert (PATCH): atualiza/insere apenas as linhas visíveis, SEM apagar as
+  // demais páginas. A remoção de linhas é feita pelo botão ✕ (delete por linha).
+  const linhas = [];
+  $('#prazoBody').querySelectorAll('tr').forEach(tr => {
+    const row = tr.dataset.id ? { id: Number(tr.dataset.id) } : {};
+    tr.querySelectorAll('.zk').forEach(i => { row[i.dataset.k] = i.value.trim(); });
+    if (row.uf || row.cidade) linhas.push(row);
+  });
+  try {
+    const r = await api(`/api/cadastro/transportadoras/${id}/prazos`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(linhas) });
+    prazoTotal = r.total;
+    toast(`${linhas.length} linha(s) salvas. Total da transportadora: ${r.total}. Clique em “Aplicar ao motor” para valer nas cotações.`);
+    await loadTransps();
+  } catch (e) { toast(e.message, 'err'); }
+};
+$('#prazoImport').onclick = () => importExcel($('#prazoTransp').value, () => { prazoPage=0; loadPrazos(); });
+
+// ─── Import do Excel (comum às duas abas) ───
+async function importExcel(id, after) {
+  if (!id) { toast('Selecione uma transportadora.', 'err'); return; }
+  const nome = (TRANSPS.find(t => String(t.id) === String(id))||{}).nome || '';
+  if (!confirm(`Importar as linhas da aba “${nome}” das planilhas Excel para o banco? Isso substitui o que já houver cadastrado desta transportadora.`)) return;
+  try {
+    const r = await api(`/api/cadastro/transportadoras/${id}/seed-excel`, { method:'POST' });
+    toast(`Importado: ${r.precos} linha(s) de preço e ${r.prazos} de prazo.`);
+    await loadTransps(); await after();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ═══════════ COMPARATIVO ═══════════
+const BRL = (n) => n == null ? '—' : 'R$ ' + Number(n).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+const PCT = (n) => n == null || !n ? '—' : (Number(n)*100).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:3}) + '%';
+$('#compCep').addEventListener('keydown', e => { if (e.key === 'Enter') $('#compBtn').click(); });
+
+// ─── Seletor de conjunto (kit do Olist) que puxa o peso ───
+let CONJUNTOS_LOADED = false;
+let CONJUNTOS = [];
+async function loadConjuntos(force) {
+  const sel = $('#compConjunto');
+  if (CONJUNTOS_LOADED && !force) return;
+  sel.innerHTML = '<option value="">— carregando conjuntos… —</option>';
+  try {
+    const d = await api('/api/olist/conjuntos' + (force ? '?refresh=1' : ''));
+    CONJUNTOS = d.conjuntos || [];
+    const opts = ['<option value="">— selecione um conjunto (opcional) —</option>'];
+    CONJUNTOS.forEach(c => {
+      const label = ((c.sku ? c.sku + ' · ' : '') + (c.nome || '')).replace(/</g, '&lt;');
+      opts.push(`<option value="${c.id}">${label}</option>`);
+    });
+    sel.innerHTML = opts.join('');
+    CONJUNTOS_LOADED = true;
+  } catch (e) {
+    sel.innerHTML = '<option value="">— Olist indisponível —</option>';
+    $('#compConjInfo').textContent = 'Não foi possível carregar os conjuntos: ' + e.message;
+  }
+}
+
+// Puxa o peso de um id de produto/conjunto e preenche o campo Peso.
+async function puxarPeso(id) {
+  const info = $('#compConjInfo');
+  if (!id) { info.textContent = ''; return; }
+  info.textContent = 'Puxando peso do Olist…';
+  try {
+    const r = await api(`/api/olist/conjuntos/${id}/peso`);
+    if (!r.ok) { info.textContent = r.erro || 'Conjunto sem peso cadastrado.'; return; }
+    $('#compPeso').value = r.peso;
+    let txt = `${r.sku ? r.sku + ' · ' : ''}Peso usado: <b>${r.peso} kg</b> (bruto ${r.peso_bruto} kg`;
+    txt += r.peso_cubado != null
+      ? ` · cubado ${r.peso_cubado} kg = ${r.m3} m³ × ${r.cubagem})`
+      : ' · sem dimensão no Olist → vale o bruto)';
+    info.innerHTML = txt;
+  } catch (e) { info.textContent = 'Falha ao puxar o peso: ' + e.message; }
+}
+
+$('#compConjunto').onchange = () => {
+  const id = $('#compConjunto').value;
+  $('#compConjCodigo').value = '';
+  puxarPeso(id);
+};
+
+// Digitar o código/SKU e encontrar o conjunto (Enter). Casa primeiro na lista já
+// carregada (rápido); se não achar, resolve pela busca de produtos do Olist.
+async function buscarPorCodigo() {
+  const val = ($('#compConjCodigo').value || '').trim();
+  const info = $('#compConjInfo');
+  if (!val) return;
+  const up = val.toUpperCase();
+  let hit = CONJUNTOS.find(c => (c.sku || '').toUpperCase() === up)
+         || CONJUNTOS.find(c => (c.sku || '').toUpperCase().startsWith(up))
+         || CONJUNTOS.find(c => (c.nome || '').toUpperCase().includes(up));
+  if (hit) { $('#compConjunto').value = hit.id; return puxarPeso(hit.id); }
+  // Fallback: busca no Olist por nome/SKU (aceita produtos fora do prefixo CJ).
+  info.textContent = 'Procurando no Olist…';
+  try {
+    const d = await api('/api/olist/produtos?q=' + encodeURIComponent(val));
+    const p = (d.produtos || [])[0];
+    if (!p) { info.textContent = `Nenhum produto encontrado para "${val}".`; return; }
+    $('#compConjunto').value = '';
+    await puxarPeso(p.id);
+  } catch (e) { info.textContent = 'Falha na busca: ' + e.message; }
+}
+$('#compConjCodigo').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); buscarPorCodigo(); } });
+$('#compConjCodigo').addEventListener('change', buscarPorCodigo);
+
+$('#compBtn').onclick = async () => {
+  const cep = ($('#compCep').value || '').replace(/\D/g, '');
+  if (cep.length !== 8) { toast('Informe um CEP de destino com 8 dígitos.', 'err'); return; }
+  const peso = numOrNull($('#compPeso').value);
+  const valor = numOrNull($('#compValor').value);
+  const qs = new URLSearchParams({ cep }); if (peso) qs.set('peso', peso); if (valor) qs.set('valor', valor);
+  $('#compBtn').disabled = true;
+  try {
+    const d = await api('/api/cadastro/comparativo?' + qs.toString());
+    renderComparativo(d);
+  } catch (e) { toast(e.message, 'err'); }
+  finally { $('#compBtn').disabled = false; }
+};
+
+function renderComparativo(d) {
+  const cobertas = d.transportadoras.filter(t => t.cobertura);
+  const naoCob = d.transportadoras.filter(t => !t.cobertura);
+  $('#compEmpty').style.display = d.transportadoras.length ? 'none' : 'block';
+
+  // colunas de generalidade: menor = melhor
+  const GEN = [
+    ['gris_pct','GRIS %', PCT], ['gris_min','GRIS mín', BRL], ['tas','TAS', BRL],
+    ['pedagio','Pedágio /100kg', BRL], ['despacho','Despacho', BRL],
+    ['advalorem_pct','Ad valorem', PCT], ['tec_pct','TEC %', PCT],
+  ];
+  const temTotal = cobertas.some(t => t.total != null);
+
+  // cabeçalho
+  let head = '<th>Transportadora</th><th>Região / prazo</th>';
+  d.bandas.forEach(b => head += `<th class="num" title="${b}">${d.banda_labels[b]||b}kg</th>`);
+  head += '<th class="num">Exced. /kg</th>';
+  GEN.forEach(g => head += `<th class="num">${g[1]}</th>`);
+  if (temTotal) head += '<th class="num">Total</th>';
+  $('#compHead').innerHTML = head;
+
+  // mínimos por coluna (entre as cobertas)
+  const minBanda = {}; d.bandas.forEach(b => { const vs = cobertas.map(t=>t.faixas[b]).filter(v=>v!=null); minBanda[b] = vs.length?Math.min(...vs):null; });
+  const minGen = {}; GEN.forEach(g => { const vs = cobertas.map(t=>t[g[0]]).filter(v=>v!=null && v>0); minGen[g[0]] = vs.length?Math.min(...vs):null; });
+  const minExc = (() => { const vs = cobertas.map(t=>t.excedente).filter(v=>v!=null); return vs.length?Math.min(...vs):null; })();
+  const minTotal = (() => { const vs = cobertas.map(t=>t.total).filter(v=>v!=null); return vs.length?Math.min(...vs):null; })();
+
+  const body = $('#compBody'); body.innerHTML = '';
+  // ordenar: cobertas por total (se houver) senão por nome, depois não-cobertas
+  cobertas.sort((a,b) => temTotal ? ((a.total??1e12)-(b.total??1e12)) : a.nome.localeCompare(b.nome));
+  for (const t of cobertas) {
+    let tds = `<td><b>${t.nome}</b></td><td class="hint">${t.regiao_casada} · ${t.prazo_dias}d</td>`;
+    d.bandas.forEach(b => {
+      const v = t.faixas[b];
+      const win = v != null && minBanda[b] != null && Math.abs(v-minBanda[b])<0.005;
+      tds += `<td class="num ${win?'win':''}">${v!=null?BRL(v):'—'}</td>`;
+    });
+    const wexc = t.excedente!=null && minExc!=null && Math.abs(t.excedente-minExc)<0.0005;
+    tds += `<td class="num ${wexc?'win':''}">${t.excedente!=null?BRL(t.excedente):'—'}</td>`;
+    GEN.forEach(g => {
+      const v = t[g[0]]; const fmt = g[2];
+      const win = v!=null && v>0 && minGen[g[0]]!=null && Math.abs(v-minGen[g[0]])<1e-7;
+      tds += `<td class="num ${win?'win':''}">${(v!=null&&v>0)?fmt(v):'—'}</td>`;
+    });
+    if (temTotal) {
+      const win = t.total!=null && minTotal!=null && Math.abs(t.total-minTotal)<0.005;
+      tds += `<td class="num ${win?'win':''}">${BRL(t.total)}</td>`;
+    }
+    const tr = document.createElement('tr'); tr.innerHTML = tds; body.appendChild(tr);
+  }
+  for (const t of naoCob) {
+    const ncols = 2 + d.bandas.length + 1 + GEN.length + (temTotal?1:0);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><b>${t.nome}</b></td><td class="nocov" colspan="${ncols-1}">sem cobertura para este destino (${t.motivo||''})</td>`;
+    body.appendChild(tr);
+  }
+
+  // resumo
+  const resumo = $('#compResumo'); resumo.innerHTML = '';
+  const dest = d.cidade_uf ? `${d.cidade_uf[0]}/${d.cidade_uf[1]}` : d.cep;
+  resumo.innerHTML = `<span class="count">${cobertas.length} transportadora(s) atendem <b style="color:var(--text)">${dest}</b>${naoCob.length?` · ${naoCob.length} sem cobertura`:''}</span>`;
+  if (temTotal && minTotal != null) {
+    const venc = cobertas.find(t => t.total!=null && Math.abs(t.total-minTotal)<0.005);
+    if (venc) resumo.innerHTML += `<span class="chip-win">💰 Mais barata p/ ${d.peso}kg${d.valor?(' / '+BRL(d.valor)):''}: <b>${venc.nome}</b> — ${BRL(minTotal)}</span>`;
+  }
+}
+
+// ─── Init ───
+loadTransps().catch(e => toast(e.message, 'err'));
+</script>
+<script src="/static/auth.js" defer></script>
+</body>
+</html>

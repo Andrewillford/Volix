@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Scorecard de Desempenho — LogHub</title>
+<link rel="stylesheet" href="/static/volix.css" />
+<style>
+  /* Volix (tokens + menu lateral + cabeçalho) vem de /static/volix.css.
+     Aqui só o CSS específico do Scorecard + overrides desta tela. */
+  header p { max-width: 720px; }
+
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 20px; }
+  .panel h2 { margin: 0 0 14px; font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  label.inline { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  select { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 6px 8px; font-size: 12px; }
+  button, a.btn { background: var(--accent); color: #fff; border: none; padding: 9px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; text-decoration: none; display: inline-block; }
+  button:hover, a.btn:hover { opacity: .9; }
+  button.secondary, a.btn.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  button.mini { padding: 4px 10px; font-size: 11px; }
+
+  /* KPIs */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .kpi { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .kpi .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+  .kpi .val { font-size: 26px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .kpi .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .kpi.hero { border-width: 2px; }
+  #kpis .kpi, #atrasos .kpi[data-atraso] { cursor: pointer; transition: box-shadow .12s, border-color .12s; }
+  #kpis .kpi:hover, #atrasos .kpi[data-atraso]:hover { border-color: var(--muted); }
+  #kpis .kpi.kpi-active, #atrasos .kpi.kpi-active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .band-verde { color: var(--ok); } .band-amarelo { color: var(--warn); } .band-vermelho { color: var(--bad); }
+  .bd-verde { border-color: var(--ok) !important; } .bd-amarelo { border-color: var(--warn) !important; } .bd-vermelho { border-color: var(--bad) !important; }
+
+  .bandpills { display:flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; align-items:center; }
+  .pill { display:inline-flex; align-items:center; gap:6px; font-size:12px; background: var(--bg); border:1px solid var(--border); border-radius: 20px; padding: 5px 12px; cursor: pointer; transition: border-color .12s, background .12s; user-select:none; }
+  .pill:hover { border-color: var(--muted); }
+  .pill.active { background: rgba(59,130,246,.14); border-color: var(--accent); }
+  .pill.filtro-off { cursor: default; color: var(--muted); background: transparent; border: none; padding-left: 0; }
+  .pill.filtro-off:hover { border: none; }
+  .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+  .card .card-head { display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px; gap: 10px; }
+  .card h3 { margin: 0; font-size: 13px; color: var(--text); }
+  .card .hint { font-size: 11px; color: var(--muted); }
+  svg.chart { width: 100%; height: auto; display: block; }
+
+  .legend { display:flex; flex-direction: column; gap: 4px; font-size: 12px; }
+  .legend .li { display:flex; align-items:center; gap:8px; justify-content: space-between; padding: 3px 6px; border-radius: 5px; border: 1px solid transparent; }
+  .legend .li.clic { cursor: pointer; }
+  .legend .li.clic:hover { background: rgba(255,255,255,.04); }
+  .legend .li.sel { border-color: var(--accent); background: rgba(59,130,246,.12); font-weight: 600; }
+  .legend .li .nm { display:flex; align-items:center; gap:8px; }
+  .donut-wrap { display:flex; gap: 18px; align-items:center; flex-wrap: wrap; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 10px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: rgba(255,255,255,.03); }
+  tbody tr.linha-foco { background: rgba(59,130,246,.12); box-shadow: inset 3px 0 0 var(--accent); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .sit { display:inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .sit.verde { background: var(--ok-bg); color: var(--ok); }
+  .sit.amarelo { background: var(--warn-bg); color: var(--warn); }
+  .sit.vermelho { background: var(--bad-bg); color: var(--bad); }
+  .sit.none { background: var(--spot-bg); color: var(--spot); }
+
+  .empty { color: var(--muted); font-size: 13px; padding: 30px 0; text-align: center; }
+  #tip { position: fixed; z-index: 80; display: none; background: #0b0f17; border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-size: 12px; pointer-events: none; box-shadow: 0 6px 20px rgba(0,0,0,.4); max-width: 240px; }
+  #tip b { color: #fff; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <img class="brand-iso" width="42" height="42" src="/static/volix-selo-grafite.svg" alt="Volix">
+    <div class="volix">Log<b>H</b>ub</div>
+    <div class="glow"></div>
+    <div class="tag">Sua logística <b>num só lugar</b></div>
+  </div>
+  <nav class="side-nav">
+    <a href="/home">🏠 Início</a>
+    <div class="sec">Financeiro</div>
+    <a href="/audit">📋 Auditoria de CTe</a>
+    <a href="/percent-nf">💰 Frete sobre Faturamento</a>
+    <a href="/conferencia">🧾 Conferência de Fatura</a>
+    <div class="sec">Suprimentos</div>
+    <a href="/coletas">🚚 Coleta em Fornecedores</a>
+    <div class="sec">Expedição</div>
+    <a href="/romaneio">📦 Romaneio de Expedição</a>
+    <div class="sec">Entregas</div>
+    <a href="/tracking">🗼 Torre de Controle</a>
+    <a href="/relatorio-dia">📨 Relatório do Dia</a>
+    <a href="/scorecard" class="active">🏆 Scorecard de Desempenho</a>
+    <div class="sec">Comercial</div>    <a href="/vendas">📈 Análise de Vendas</a>
+    <div class="sec">Configuração</div>
+    <a href="/cadastro">🗂️ Cadastro de Tabelas</a>
+  </nav>
+</aside>
+
+<header>
+  <img class="vmark vmark-dark" width="40" height="40" src="/static/volix-selo-grafite.svg" alt="Volix"><img class="vmark vmark-light" width="40" height="40" src="/static/volix-selo-principal.svg" alt="Volix">
+  <h1>Scorecard de Desempenho</h1>
+  <p>Eficiência de entrega (OTD) por transportadora. Meta 95% — <span class="band-verde">≥95 no alvo</span>, <span class="band-amarelo">85–95 atenção</span>, <span class="band-vermelho">&lt;85 crítico</span>.</p>
+</header>
+
+<main>
+
+  <div class="panel">
+    <div class="row" style="justify-content: space-between;">
+      <div class="row">
+        <label class="inline">Mês
+          <select id="mesFilter"><option value="">Todos</option></select>
+        </label>
+        <label class="inline">Transportadora
+          <select id="transpFilter"><option value="">Todas</option></select>
+        </label>
+        <button class="secondary" id="refreshBtn" type="button">Atualizar</button>
+        <span class="pill" id="ufChip" style="display:none;"></span>
+      </div>
+      <a class="btn" id="exportBtn" href="/api/scorecard/export.xlsx">📄 Exportar Excel</a>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Resumo geral de eficiência</h2>
+    <div class="kpis" id="kpis"></div>
+    <div class="bandpills" id="bandpills"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Entregas realizadas com atraso</h2>
+    <div class="kpis" id="atrasos"></div>
+    <div class="hint" style="margin-top:10px;">Faixas cumulativas e inclusivas: "1 dia ou mais" cobre todas as entregas realizadas com atraso; "2 dias ou mais" e "3 dias ou mais" são subconjuntos. Não inclui entregas ainda atrasadas em aberto (não entregues). Clique numa faixa para ver por transportadora.</div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-head">
+        <h3 id="barrasTitle">OTD por transportadora</h3>
+        <div class="row">
+          <span class="hint" id="barrasHint">👆 clique numa barra p/ focar · na pizza p/ ver por status</span>
+          <button class="secondary mini" id="voltarOtd" type="button" style="display:none;">↩ visão geral</button>
+          <button class="secondary mini" data-png="barras" type="button">PNG</button>
+        </div>
+      </div>
+      <svg class="chart" id="chartBarras"></svg>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <h3 id="donutTitle">Distribuição das entregas</h3>
+        <button class="secondary mini" data-png="donut" type="button">PNG</button>
+      </div>
+      <div class="donut-wrap">
+        <svg class="chart" id="chartDonut" style="max-width:220px;"></svg>
+        <div class="legend" id="donutLegend" style="flex:1;min-width:180px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px;">
+    <div class="card-head">
+      <h3 id="mapaTitle">Eficiência por estado</h3>
+      <div class="row">
+        <span class="hint" id="mapaHint">👆 clique nos estados p/ somar o desempenho (pode marcar vários) · clique de novo p/ remover</span>
+        <button class="secondary mini" data-png="mapa" type="button">PNG</button>
+      </div>
+    </div>
+    <div class="donut-wrap" style="align-items:flex-start;">
+      <svg class="chart" id="chartMapa" style="max-width:430px;"></svg>
+      <div class="legend" id="mapaRank" style="flex:1;min-width:200px;"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px;">
+    <div class="card-head">
+      <h3 id="linhaTitle">Evolução mensal do OTD (geral)</h3>
+      <div class="row">
+        <span class="hint" id="linhaHint">👆 clique num mês p/ filtrar · passe o mouse p/ números</span>
+        <button class="secondary mini" data-png="linha" type="button">PNG</button>
+      </div>
+    </div>
+    <svg class="chart" id="chartLinha"></svg>
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
+    <h2>Desempenho por transportadora</h2>
+    <div style="overflow-x:auto;">
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Transportadora</th>
+            <th class="num">OTD</th>
+            <th>Situação</th>
+            <th class="num">Entregas</th>
+            <th class="num">No prazo</th>
+            <th class="num">C/ atraso</th>
+            <th class="num">Atras. abertas</th>
+            <th class="num">Em trânsito</th>
+            <th class="num">Devol.</th>
+            <th class="num">Atraso méd.</th>
+          </tr>
+        </thead>
+        <tbody id="tblBody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="emptyMsg" style="display:none;">Nenhuma entrega registrada ainda. Importe ocorrências e audite CTes na <a href="/tracking" style="color:var(--accent);">Torre de Controle</a>.</div>
+  </div>
+
+</main>
+
+<div id="tip"></div>
+
+<script src="/static/br_geo.js"></script>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const SVGNS = 'http://www.w3.org/2000/svg';
+const COR = { ok:'#22c55e', warn:'#f59e0b', bad:'#ef4444', spot:'#64748b', accent:'#3b82f6',
+              muted:'#8b93a7', border:'#2a3244', bg:'#0f1420', text:'#e6e9f0' };
+let META = 95, ATENCAO = 85;
+let DADOS = null;
+let filtroBanda = null;   // 'verde' | 'amarelo' | 'vermelho' | null
+let statusSel = null;     // {key,label,cor} do segmento/card selecionado → barras por status
+const transpAtual = () => $('#transpFilter').value || null;   // filtro global de transportadora
+let ufsSel = [];          // UFs selecionadas no mapa (seleção múltipla) → filtra o painel
+// Cards do resumo → modo status do gráfico de barras (null = volta ao OTD)
+const KPI_STATUS = {
+  otd: null,
+  entregas: { key:'entregas', label:'Entregas', cor:'#3b82f6' },
+  no_prazo: { key:'no_prazo', label:'Entregue no prazo', cor:'#22c55e' },
+  atrasadas_abertas: { key:'atrasadas_abertas', label:'Atrasada em aberto', cor:'#ef4444' },
+  devolvidas: { key:'devolvidas', label:'Devolvida', cor:'#f59e0b' },
+};
+// Tiles do card de atraso → contagem por transportadora (mesmo "modo status")
+const ATRASO_STATUS = {
+  mais1: { key:'atraso_mais1', label:'Atraso de 1 dia ou mais', cor:'#f59e0b' },
+  mais2: { key:'atraso_mais2', label:'Atraso de 2 dias ou mais', cor:'#f97316' },
+  mais3: { key:'atraso_mais3', label:'Atraso de 3 dias ou mais', cor:'#ef4444' },
+};
+
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => (
+  { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const fmtInt = (n) => (n ?? 0).toLocaleString('pt-BR');
+const pct = (n) => (n === null || n === undefined) ? '—' : n.toLocaleString('pt-BR', { minimumFractionDigits:1, maximumFractionDigits:1 }) + '%';
+const corOtd = (o) => o === null || o === undefined ? COR.spot : (o >= META ? COR.ok : (o >= ATENCAO ? COR.warn : COR.bad));
+const bandDe = (o) => o === null || o === undefined ? 'none' : (o >= META ? 'verde' : (o >= ATENCAO ? 'amarelo' : 'vermelho'));
+
+function el(tag, attrs = {}, text = null) {
+  const e = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== null) e.textContent = text;
+  return e;
+}
+function clear(svg) { while (svg.firstChild) svg.removeChild(svg.firstChild); }
+const tip = $('#tip');
+function showTip(html, ev) { tip.innerHTML = html; tip.style.display = 'block'; tip.style.left = (ev.clientX + 14) + 'px'; tip.style.top = (ev.clientY + 14) + 'px'; }
+function hideTip() { tip.style.display = 'none'; }
+
+// ─── Gráfico de barras horizontais: OTD por transportadora ─────────────────
+function renderBarras(svg, linhas) {
+  clear(svg);
+  const L = 150, R = 46, T = 22, B = 30, rowH = 30;
+  const W = 780, plotW = W - L - R;
+  const H = Math.max(60, linhas.length * rowH + T + B);
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const x = (v) => L + (Math.max(0, Math.min(100, v)) / 100) * plotW;
+
+  // grade 0..100 (atrás das barras)
+  [0, 25, 50, 75, 100].forEach(v => {
+    svg.appendChild(el('line', { x1:x(v), y1:T, x2:x(v), y2:H-B, stroke:COR.border, 'stroke-width':1 }));
+    svg.appendChild(el('text', { x:x(v), y:H-B+16, fill:COR.muted, 'font-size':10, 'text-anchor':'middle' }, v));
+  });
+
+  linhas.forEach((l, i) => {
+    const y = T + i * rowH;
+    const cy = y + rowH / 2;
+    const foco = l.transportadora === transpAtual();
+    if (foco) svg.appendChild(el('rect', { x:0, y:y+1, width:W, height:rowH-2, rx:4, fill:'rgba(59,130,246,.12)', stroke:COR.accent, 'stroke-width':1 }));
+    svg.appendChild(el('text', { x:L-8, y:cy+4, fill:COR.text, 'font-size':12, 'font-weight': foco?700:400, 'text-anchor':'end' },
+      l.transportadora.length > 22 ? l.transportadora.slice(0,21) + '…' : l.transportadora));
+    if (l.otd_pct === null) {
+      svg.appendChild(el('text', { x:L+6, y:cy+4, fill:COR.spot, 'font-size':11 }, 'sem entregas realizadas'));
+    } else {
+      const c = corOtd(l.otd_pct);
+      svg.appendChild(el('rect', { x:L, y:y+6, width:Math.max(2, x(l.otd_pct)-L), height:rowH-12, rx:3, fill:c, opacity: foco?1:.85 }));
+      svg.appendChild(el('text', { x:x(l.otd_pct)+6, y:cy+4, fill:c, 'font-size':12, 'font-weight':700 }, pct(l.otd_pct)));
+    }
+    // faixa interativa (linha inteira)
+    const hit = el('rect', { x:0, y:y, width:W, height:rowH, fill:'transparent', style:'cursor:pointer' });
+    hit.addEventListener('mousemove', (ev) => showTip(
+      `<b>${escapeHtml(l.transportadora)}</b><br>OTD: ${pct(l.otd_pct)}<br>${fmtInt(l.entregues)}/${fmtInt(l.entregas)} entregues no prazo<br><span style="color:#8b93a7">clique p/ ver pizza e evolução dela</span>`, ev));
+    hit.addEventListener('mouseleave', hideTip);
+    hit.addEventListener('click', () => selecionarTransp(l.transportadora));
+    svg.appendChild(hit);
+  });
+
+  // linhas de meta (95) e atenção (85) — POR CIMA das barras; rótulos acima do gráfico
+  [[META, COR.ok], [ATENCAO, COR.warn]].forEach(([v, c]) => {
+    svg.appendChild(el('line', { x1:x(v), y1:T, x2:x(v), y2:H - B, stroke:c, 'stroke-width':1.5, 'stroke-dasharray':'4 3', opacity:.95, style:'pointer-events:none' }));
+    svg.appendChild(el('text', { x:x(v), y:13, fill:c, 'font-size':10, 'font-weight':600, 'text-anchor':'middle', style:'pointer-events:none' }, v + '%'));
+  });
+}
+
+// ─── Barras por status (contagem por transportadora) ───────────────────────
+function renderBarrasStatus(svg, linhas, sel) {
+  clear(svg);
+  const dados = linhas.map(l => ({ nome: l.transportadora, valor: l[sel.key] || 0, entregas: l.entregas }))
+                      .sort((a, b) => b.valor - a.valor);
+  const L = 150, R = 46, T = 8, B = 30, rowH = 30;
+  const W = 780, plotW = W - L - R;
+  const H = Math.max(60, dados.length * rowH + T + B);
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const maxV = Math.max(1, ...dados.map(d => d.valor));
+  // eixo com 4 marcas "redondas"
+  const step = Math.max(1, Math.ceil(maxV / 4));
+  const ticks = []; for (let v = 0; v <= maxV; v += step) ticks.push(v);
+  const escala = ticks[ticks.length - 1] || 1;
+  const x = (v) => L + (v / escala) * plotW;
+
+  ticks.forEach(v => {
+    svg.appendChild(el('line', { x1:x(v), y1:T, x2:x(v), y2:H-B, stroke:COR.border, 'stroke-width':1 }));
+    svg.appendChild(el('text', { x:x(v), y:H-B+16, fill:COR.muted, 'font-size':10, 'text-anchor':'middle' }, v));
+  });
+  dados.forEach((d, i) => {
+    const y = T + i * rowH, cy = y + rowH / 2;
+    svg.appendChild(el('text', { x:L-8, y:cy+4, fill:COR.text, 'font-size':12, 'text-anchor':'end' },
+      d.nome.length > 22 ? d.nome.slice(0,21) + '…' : d.nome));
+    if (d.valor > 0) {
+      svg.appendChild(el('rect', { x:L, y:y+6, width:Math.max(2, x(d.valor)-L), height:rowH-12, rx:3, fill:sel.cor, opacity:.85 }));
+    }
+    svg.appendChild(el('text', { x:(d.valor>0?x(d.valor):L)+6, y:cy+4, fill: d.valor>0?sel.cor:COR.spot, 'font-size':12, 'font-weight':700 }, fmtInt(d.valor)));
+    const hit = el('rect', { x:0, y:y, width:W, height:rowH, fill:'transparent', style:'cursor:pointer' });
+    hit.addEventListener('mousemove', (ev) => showTip(`<b>${escapeHtml(d.nome)}</b><br>${sel.label}: ${fmtInt(d.valor)}<br>de ${fmtInt(d.entregas)} entregas<br><span style="color:#8b93a7">clique p/ focar a transportadora</span>`, ev));
+    hit.addEventListener('mouseleave', hideTip);
+    hit.addEventListener('click', () => selecionarTransp(d.nome));
+    svg.appendChild(hit);
+  });
+}
+
+// ─── Rosca (donut) de distribuição ─────────────────────────────────────────
+function donutSegments(r) {
+  return [
+    { label:'Entregue no prazo', key:'no_prazo', valor:r.no_prazo, cor:COR.ok },
+    { label:'Entregue c/ atraso', key:'entregue_atrasado', valor:r.entregue_atrasado, cor:'#b45309' },
+    { label:'Atrasada em aberto', key:'atrasadas_abertas', valor:r.atrasadas_abertas, cor:COR.bad },
+    { label:'Em trânsito', key:'em_transito', valor:r.em_transito, cor:COR.accent },
+    { label:'Devolvida', key:'devolvidas', valor:r.devolvidas, cor:COR.warn },
+    { label:'Sem prazo', key:'sem_prazo', valor:r.sem_prazo, cor:COR.spot },
+  ].filter(s => s.valor > 0);
+}
+// interativo=true (donut geral): clicar num segmento explode o gráfico de barras
+// da esquerda por aquele status.
+function renderDonut(svg, legendEl, segs, interativo = false) {
+  clear(svg); legendEl.innerHTML = '';
+  const size = 200, cx = size/2, cy = size/2, rOut = 90, rIn = 54;
+  svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+  const total = segs.reduce((a, s) => a + s.valor, 0);
+  if (!total) { svg.appendChild(el('text', { x:cx, y:cy, fill:COR.muted, 'font-size':12, 'text-anchor':'middle' }, 'sem dados')); return; }
+  let ang = -Math.PI / 2;
+  const arc = (cx, cy, r, a) => [cx + r*Math.cos(a), cy + r*Math.sin(a)];
+  segs.forEach(s => {
+    const frac = s.valor / total, a2 = ang + frac * 2 * Math.PI;
+    const big = (a2 - ang) > Math.PI ? 1 : 0;
+    const [x1,y1] = arc(cx,cy,rOut,ang), [x2,y2] = arc(cx,cy,rOut,a2);
+    const [x3,y3] = arc(cx,cy,rIn,a2), [x4,y4] = arc(cx,cy,rIn,ang);
+    const d = `M${x1} ${y1} A${rOut} ${rOut} 0 ${big} 1 ${x2} ${y2} L${x3} ${y3} A${rIn} ${rIn} 0 ${big} 0 ${x4} ${y4} Z`;
+    const sel = interativo && statusSel && statusSel.key === s.key;
+    const p = el('path', { d, fill:s.cor, opacity: sel ? 1 : .9, style:'cursor:' + (interativo ? 'pointer' : 'default') });
+    if (sel) { p.setAttribute('stroke', '#fff'); p.setAttribute('stroke-width', 2); }
+    const pctv = (frac*100).toLocaleString('pt-BR', {maximumFractionDigits:1});
+    const extra = interativo ? '<br><span style="color:#8b93a7">clique p/ ver por transportadora</span>' : '';
+    p.addEventListener('mousemove', (ev) => showTip(`<b>${s.label}</b><br>${fmtInt(s.valor)} entregas · ${pctv}%${extra}`, ev));
+    p.addEventListener('mouseleave', hideTip);
+    if (interativo) p.addEventListener('click', () => selecionarStatus(s));
+    svg.appendChild(p);
+    ang = a2;
+    const li = document.createElement('div');
+    li.className = 'li' + (interativo ? ' clic' : '') + (sel ? ' sel' : '');
+    li.innerHTML = `<span class="nm"><span class="dot" style="background:${s.cor}"></span>${s.label}</span><span>${fmtInt(s.valor)} · ${pctv}%</span>`;
+    if (interativo) li.addEventListener('click', () => selecionarStatus(s));
+    legendEl.appendChild(li);
+  });
+  const centro = statusSel && interativo ? statusSel.valor ?? total : total;
+  svg.appendChild(el('text', { x:cx, y:cy-4, fill:COR.text, 'font-size':22, 'font-weight':700, 'text-anchor':'middle' }, fmtInt(total)));
+  svg.appendChild(el('text', { x:cx, y:cy+14, fill:COR.muted, 'font-size':11, 'text-anchor':'middle' }, 'entregas'));
+}
+
+// Selecionar/alternar um status (pizza ou card do resumo) → barras viram contagem por status.
+function selecionarStatus(seg) {
+  statusSel = (statusSel && statusSel.key === seg.key) ? null : { key: seg.key, label: seg.label, cor: seg.cor };
+  filtroBanda = null;   // status e faixa não se acumulam nas barras
+  renderPainel();
+}
+
+// Clicar numa transportadora → vira filtro GLOBAL (todos os cards + mapa reagem).
+function selecionarTransp(nome) {
+  const sel = $('#transpFilter');
+  sel.value = (sel.value === nome) ? '' : nome;   // alterna
+  load();
+}
+
+// ─── Linha: evolução mensal do OTD ─────────────────────────────────────────
+// clicavelMes: se true, clicar num ponto filtra o painel por aquele mês.
+function renderLinha(svg, serie, clicavelMes = false) {
+  clear(svg);
+  const L = 40, R = 20, T = 14, B = 34;
+  const W = 780, plotW = W - L - R, H = 260, plotH = H - T - B;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const pts = serie.filter(s => s.otd_pct !== null);
+  const y = (v) => T + (1 - Math.max(0, Math.min(100, v)) / 100) * plotH;
+  const n = serie.length;
+  const x = (i) => n <= 1 ? L + plotW/2 : L + (i / (n - 1)) * plotW;
+
+  [0, 50, 85, 95, 100].forEach(v => {
+    const c = v === 95 ? COR.ok : (v === 85 ? COR.warn : COR.border);
+    const dash = (v === 95 || v === 85) ? '4 3' : null;
+    const ln = el('line', { x1:L, y1:y(v), x2:W-R, y2:y(v), stroke:c, 'stroke-width': (v===95||v===85)?1.5:1 });
+    if (dash) ln.setAttribute('stroke-dasharray', dash);
+    svg.appendChild(ln);
+    svg.appendChild(el('text', { x:L-6, y:y(v)+3, fill: (v===95||v===85)?c:COR.muted, 'font-size':10, 'text-anchor':'end' }, v));
+  });
+  if (!pts.length) { svg.appendChild(el('text', { x:W/2, y:H/2, fill:COR.muted, 'font-size':12, 'text-anchor':'middle' }, 'sem entregas realizadas no período')); return; }
+
+  // rótulos de mês
+  serie.forEach((s, i) => svg.appendChild(el('text', { x:x(i), y:H-14, fill:COR.muted, 'font-size':10, 'text-anchor':'middle' }, s.mes.slice(2))));
+  // polilinha
+  const path = pts.map((s) => `${x(serie.indexOf(s))},${y(s.otd_pct)}`).join(' ');
+  svg.appendChild(el('polyline', { points:path, fill:'none', stroke:COR.accent, 'stroke-width':2 }));
+  // pontos
+  serie.forEach((s, i) => {
+    if (s.otd_pct === null) return;
+    const c = corOtd(s.otd_pct);
+    const raio = clicavelMes ? 7 : 5;
+    const dot = el('circle', { cx:x(i), cy:y(s.otd_pct), r:raio, fill:c, stroke:COR.bg, 'stroke-width':1.5, style:'cursor:' + (clicavelMes ? 'pointer' : 'default') });
+    const extra = clicavelMes ? '<br><span style="color:#8b93a7">clique p/ filtrar este mês</span>' : '';
+    dot.addEventListener('mousemove', (ev) => showTip(`<b>${s.mes}</b><br>OTD: ${pct(s.otd_pct)}<br>${fmtInt(s.entregues)}/${fmtInt(s.entregas)} no prazo${extra}`, ev));
+    dot.addEventListener('mouseleave', hideTip);
+    if (clicavelMes) dot.addEventListener('click', () => { hideTip(); $('#mesFilter').value = s.mes; load(); });
+    svg.appendChild(dot);
+  });
+}
+
+// ─── Mapa geográfico do Brasil: eficiência por estado ──────────────────────
+function _tileRank(rankEl, itens, onClick) {
+  rankEl.innerHTML = '';
+  if (!itens.length) { rankEl.innerHTML = '<div class="hint">Sem entregas no período.</div>'; return; }
+  itens.forEach(it => {
+    const li = document.createElement('div');
+    li.className = 'li clic' + (it.sel ? ' sel' : '');
+    li.innerHTML = `<span class="nm"><span class="dot" style="background:${corOtd(it.otd_pct)}"></span><b>${escapeHtml(it.nome)}</b> · ${fmtInt(it.entregas)} entregas</span><span class="band-${bandDe(it.otd_pct)}">${pct(it.otd_pct)}</span>`;
+    li.addEventListener('click', () => onClick(it.nome));
+    rankEl.appendChild(li);
+  });
+}
+
+function renderMapa(svg, rankEl, porEstado) {
+  clear(svg);
+  const dados = {}; porEstado.forEach(e => dados[e.uf] = e);
+  svg.setAttribute('viewBox', BR_GEO.viewBox);
+  const selPaths = [];
+  Object.keys(BR_GEO.uf).forEach(uf => {
+    const d = dados[uf];
+    const tem = !!d && d.otd_pct !== null;
+    const sel = ufsSel.includes(uf);
+    const path = el('path', { d: BR_GEO.uf[uf], fill: tem ? corOtd(d.otd_pct) : '#20293a',
+      'fill-opacity': tem ? .85 : .4, stroke: sel ? '#ffffff' : '#0a0d12',
+      'stroke-width': sel ? 2 : .8, 'stroke-linejoin': 'round',
+      style: 'cursor:' + (tem ? 'pointer' : 'default') });
+    if (tem) {
+      path.addEventListener('mousemove', (ev) => showTip(
+        `<b>${uf}</b> — OTD ${pct(d.otd_pct)}<br>${fmtInt(d.entregues)}/${fmtInt(d.entregas)} no prazo<br>Atrasadas: ${fmtInt(d.atrasadas_abertas)} · Devol.: ${fmtInt(d.devolvidas)}<br><span style="color:#8b93a7">clique p/ ver o desempenho</span>`, ev));
+      path.addEventListener('mouseleave', hideTip);
+      path.addEventListener('click', () => selecionarUf(uf));
+    } else {
+      path.addEventListener('mousemove', (ev) => showTip(`<b>${uf}</b><br><span style="color:#8b93a7">sem entregas no período</span>`, ev));
+      path.addEventListener('mouseleave', hideTip);
+    }
+    svg.appendChild(path);
+    if (sel) selPaths.push(path);
+  });
+  selPaths.forEach(p => svg.appendChild(p));   // estados selecionados por cima
+  // rótulos (siglas) nos estados com dados
+  Object.keys(BR_GEO.uf).forEach(uf => {
+    const d = dados[uf]; if (!d || d.otd_pct === null) return;
+    const c = BR_GEO.cent[uf];
+    svg.appendChild(el('text', { x:c[0], y:c[1] + 3.5, fill:'#0a0d12', 'font-size':11, 'font-weight':700, 'text-anchor':'middle', style:'pointer-events:none' }, uf));
+  });
+  const itens = porEstado.map(e => ({ nome:e.uf, otd_pct:e.otd_pct, entregas:e.entregas, sel: ufsSel.includes(e.uf) }))
+                         .sort((a, b) => (a.otd_pct ?? 999) - (b.otd_pct ?? 999));
+  _tileRank(rankEl, itens, selecionarUf);
+}
+
+function selecionarUf(uf) {
+  const i = ufsSel.indexOf(uf);
+  if (i >= 0) ufsSel.splice(i, 1); else ufsSel.push(uf);   // alterna (seleção múltipla)
+  load();   // recarrega o painel filtrado pelos estados (mapa continua completo)
+}
+
+// ─── Card: entregas realizadas com atraso (faixas de severidade) ───────────
+function renderAtrasos(r) {
+  const tot = r.entregue_atrasado || 0;
+  $('#atrasos').innerHTML = `
+    <div class="kpi" data-atraso="mais1" title="Ver por transportadora"><div class="label">1 dia ou mais de atraso</div><div class="val" style="color:#f59e0b">${fmtInt(r.atraso_mais1)}</div></div>
+    <div class="kpi" data-atraso="mais2" title="Ver por transportadora"><div class="label">2 dias ou mais</div><div class="val" style="color:#f97316">${fmtInt(r.atraso_mais2)}</div></div>
+    <div class="kpi" data-atraso="mais3" title="Ver por transportadora"><div class="label">3 dias ou mais</div><div class="val" style="color:#ef4444">${fmtInt(r.atraso_mais3)}</div></div>
+    <div class="kpi"><div class="label">Atraso médio das realizadas</div><div class="val">${r.atraso_medio_dias ? r.atraso_medio_dias.toLocaleString('pt-BR') + ' d' : '—'}</div><div class="sub">${fmtInt(tot)} entregues com atraso</div></div>`;
+  document.querySelectorAll('#atrasos .kpi[data-atraso]').forEach(c =>
+    c.addEventListener('click', () => selecionarStatus(ATRASO_STATUS[c.dataset.atraso])));
+}
+
+// ─── Render principal ──────────────────────────────────────────────────────
+function renderKpis(r) {
+  const band = bandDe(r.otd_pct);
+  $('#kpis').innerHTML = `
+    <div class="kpi hero bd-${band}" data-kpi="otd" data-band="${band}" title="OTD = entregas no prazo ÷ entregas que tinham prazo contratado. Clique para filtrar as transportadoras nesta faixa (toggle).">
+      <div class="label">OTD geral (eficiência)</div>
+      <div class="val band-${band}">${pct(r.otd_pct)}</div>
+      <div class="sub">meta ${META.toLocaleString('pt-BR')}% · base ${fmtInt(r.avaliadas_otd)} c/ prazo</div>
+    </div>
+    <div class="kpi" data-kpi="entregas" title="Ver entregas por transportadora"><div class="label">Entregas</div><div class="val">${fmtInt(r.entregas)}</div><div class="sub">${fmtInt(r.entregues)} entregues${r.entregue_sem_prazo ? ` · ${fmtInt(r.entregue_sem_prazo)} s/ prazo` : ''}</div></div>
+    <div class="kpi" data-kpi="no_prazo" title="Ver entregas no prazo por transportadora"><div class="label">No prazo</div><div class="val">${fmtInt(r.no_prazo)}</div><div class="sub">${fmtInt(r.entregue_atrasado)} com atraso</div></div>
+    <div class="kpi" data-kpi="atrasadas_abertas" title="Ver atrasadas em aberto por transportadora"><div class="label">Atrasadas em aberto</div><div class="val ${r.atrasadas_abertas?'band-vermelho':''}">${fmtInt(r.atrasadas_abertas)}</div><div class="sub">${fmtInt(r.em_transito)} em trânsito</div></div>
+    <div class="kpi" data-kpi="devolvidas" title="Ver devolvidas por transportadora"><div class="label">Devolvidas</div><div class="val ${r.devolvidas?'band-amarelo':''}">${fmtInt(r.devolvidas)}</div><div class="sub">atraso méd. ${r.atraso_medio_dias?r.atraso_medio_dias.toLocaleString('pt-BR')+'d':'—'}</div></div>`;
+  document.querySelectorAll('#kpis .kpi[data-kpi]').forEach(c => c.addEventListener('click', () => {
+    // Card-hero OTD filtra pela FAIXA de eficiência dele (toggle); os demais cruzam por status.
+    if (c.dataset.kpi === 'otd') {
+      if (band !== 'none') setBanda(band);
+      else { statusSel = null; renderPainel(); }
+      return;
+    }
+    const seg = KPI_STATUS[c.dataset.kpi];
+    if (!seg) { statusSel = null; renderPainel(); } else { selecionarStatus(seg); }
+  }));
+  $('#bandpills').innerHTML = `
+    <span class="pill" data-band="verde"><span class="dot" style="background:${COR.ok}"></span><b>${fmtInt(r.no_alvo)}</b>&nbsp;no alvo (≥95%)</span>
+    <span class="pill" data-band="amarelo"><span class="dot" style="background:${COR.warn}"></span><b>${fmtInt(r.em_atencao)}</b>&nbsp;em atenção (85–95%)</span>
+    <span class="pill" data-band="vermelho"><span class="dot" style="background:${COR.bad}"></span><b>${fmtInt(r.criticas)}</b>&nbsp;críticas (&lt;85%)</span>
+    <span class="pill filtro-off" id="limparBanda" style="display:none;">✕ limpar filtro</span>`;
+  document.querySelectorAll('#bandpills .pill[data-band]').forEach(p =>
+    p.addEventListener('click', () => setBanda(p.dataset.band)));
+  $('#limparBanda').addEventListener('click', () => setBanda(null));
+}
+
+// Filtro por faixa de eficiência (clicar nas pílulas do resumo)
+function setBanda(b) {
+  filtroBanda = (b === null || filtroBanda === b) ? null : b;
+  statusSel = null;   // faixa e status não coexistem nas barras
+  renderPainel();
+}
+function listaFiltrada() {
+  if (!filtroBanda) return DADOS.por_transportadora;
+  return DADOS.por_transportadora.filter(l => bandDe(l.otd_pct) === filtroBanda);
+}
+function renderPainel() {
+  const transp = transpAtual();
+  const sufTransp = transp ? ' — ' + transp : '';
+  const title = $('#barrasTitle'), hint = $('#barrasHint'), voltar = $('#voltarOtd');
+
+  // ── Barras (esquerda) ──
+  if (statusSel) {
+    title.textContent = statusSel.label + ' — por transportadora';
+    hint.textContent = 'nº de entregas neste status · clique numa barra p/ filtrar';
+    renderBarrasStatus($('#chartBarras'), DADOS.por_transportadora, statusSel);
+    renderTable(DADOS.por_transportadora);
+  } else {
+    const lista = listaFiltrada();
+    title.textContent = 'OTD por transportadora';
+    hint.textContent = transp
+      ? `filtrado: ${transp} — todos os cards e o mapa refletem esta transportadora`
+      : '👆 clique numa barra p/ filtrar tudo · na pizza p/ ver por status';
+    renderBarras($('#chartBarras'), lista);
+    renderTable(lista);
+  }
+  voltar.style.display = statusSel ? 'inline-block' : 'none';
+
+  // ── Pizza e evolução: refletem os dados já filtrados (inclui transportadora) ──
+  $('#donutTitle').textContent = 'Distribuição das entregas' + sufTransp;
+  renderDonut($('#chartDonut'), $('#donutLegend'), donutSegments(DADOS.resumo), true);
+
+  $('#linhaTitle').textContent = 'Evolução mensal do OTD' + (transp ? sufTransp : ' (geral)');
+  $('#linhaHint').textContent = '👆 clique num mês p/ filtrar · passe o mouse p/ números';
+  renderLinha($('#chartLinha'), DADOS.serie_mensal, true);
+
+  // ── Realces ──
+  document.querySelectorAll('#bandpills .pill[data-band]').forEach(p =>
+    p.classList.toggle('active', p.dataset.band === filtroBanda));
+  const limpar = $('#limparBanda');
+  if (limpar) limpar.style.display = filtroBanda ? 'inline' : 'none';
+  document.querySelectorAll('#kpis .kpi[data-kpi]').forEach(c => {
+    let ativo;
+    if (c.dataset.kpi === 'otd') ativo = !!filtroBanda && c.dataset.band === filtroBanda;  // hero: ativo quando sua faixa está filtrada
+    else { const seg = KPI_STATUS[c.dataset.kpi]; ativo = statusSel && seg && seg.key === statusSel.key; }
+    c.classList.toggle('kpi-active', !!ativo);
+  });
+  document.querySelectorAll('#atrasos .kpi[data-atraso]').forEach(c => {
+    const seg = ATRASO_STATUS[c.dataset.atraso];
+    c.classList.toggle('kpi-active', !!(statusSel && seg && seg.key === statusSel.key));
+  });
+}
+
+function renderTable(linhas) {
+  const body = $('#tblBody'); body.innerHTML = '';
+  if (!linhas.length) { $('#emptyMsg').style.display = 'block'; return; }
+  $('#emptyMsg').style.display = 'none';
+  const sitLabel = { verde:'No alvo', amarelo:'Atenção', vermelho:'Crítico', none:'—' };
+  linhas.forEach((l, i) => {
+    const band = bandDe(l.otd_pct);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="num" style="color:var(--muted)">${i + 1}</td>
+      <td>${escapeHtml(l.transportadora)}</td>
+      <td class="num band-${band}"><b>${pct(l.otd_pct)}</b></td>
+      <td><span class="sit ${band}">${sitLabel[band]}</span></td>
+      <td class="num">${fmtInt(l.entregas)}</td>
+      <td class="num">${fmtInt(l.no_prazo)}</td>
+      <td class="num ${l.entregue_atrasado?'band-amarelo':''}">${fmtInt(l.entregue_atrasado)}</td>
+      <td class="num ${l.atrasadas_abertas?'band-vermelho':''}">${fmtInt(l.atrasadas_abertas)}</td>
+      <td class="num">${fmtInt(l.em_transito)}</td>
+      <td class="num ${l.devolvidas?'band-amarelo':''}">${fmtInt(l.devolvidas)}</td>
+      <td class="num" style="color:var(--muted)">${l.atraso_medio_dias?l.atraso_medio_dias.toLocaleString('pt-BR')+'d':'—'}</td>`;
+    if (l.transportadora === transpAtual()) tr.classList.add('linha-foco');
+    tr.addEventListener('click', () => selecionarTransp(l.transportadora));
+    body.appendChild(tr);
+  });
+}
+
+// "Visão geral": limpa foco de transportadora e modo status
+$('#voltarOtd').addEventListener('click', () => { statusSel = null; renderPainel(); });
+
+// ─── Exportar gráfico como PNG ─────────────────────────────────────────────
+function svgToPng(svg, filename) {
+  const vb = svg.viewBox.baseVal;
+  const w = vb && vb.width ? vb.width : svg.clientWidth;
+  const h = vb && vb.height ? vb.height : svg.clientHeight;
+  const clone = svg.cloneNode(true);
+  clone.setAttribute('xmlns', SVGNS);
+  clone.setAttribute('width', w); clone.setAttribute('height', h);
+  const xml = new XMLSerializer().serializeToString(clone);
+  const src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(xml)));
+  const img = new Image();
+  img.onload = () => {
+    const scale = 2, c = document.createElement('canvas');
+    c.width = w * scale; c.height = h * scale;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = COR.bg; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.scale(scale, scale); ctx.drawImage(img, 0, 0);
+    c.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = filename; a.click(); URL.revokeObjectURL(a.href); });
+  };
+  img.src = src;
+}
+document.querySelectorAll('[data-png]').forEach(btn => btn.addEventListener('click', () => {
+  const map = { barras:['#chartBarras','otd_por_transportadora.png'], donut:['#chartDonut','distribuicao_entregas.png'],
+                linha:['#chartLinha','evolucao_otd.png'], mapa:['#chartMapa','eficiencia_por_estado.png'] };
+  const [sel, fn] = map[btn.dataset.png];
+  svgToPng($(sel), fn);
+}));
+
+// ─── Carga ─────────────────────────────────────────────────────────────────
+async function loadMeses() {
+  const meses = await fetch('/api/scorecard/meses').then(r => r.json());
+  const sel = $('#mesFilter');
+  for (const m of meses) { const o = document.createElement('option'); o.value = m; o.textContent = m; sel.appendChild(o); }
+}
+// Preenche o dropdown de transportadora preservando a seleção atual.
+function popularTransp(lista, atual) {
+  const sel = $('#transpFilter');
+  sel.innerHTML = '<option value="">Todas</option>';
+  for (const nome of (lista || [])) {
+    const o = document.createElement('option'); o.value = nome; o.textContent = nome; sel.appendChild(o);
+  }
+  sel.value = (atual && lista && lista.includes(atual)) ? atual : '';
+}
+async function load() {
+  const mes = $('#mesFilter').value;
+  const transp = $('#transpFilter').value;
+  const qs = new URLSearchParams();
+  if (mes) qs.set('mes', mes);
+  if (ufsSel.length) qs.set('uf', ufsSel.join(','));
+  if (transp) qs.set('transp', transp);
+  const query = qs.toString();
+  const data = await fetch('/api/scorecard' + (query ? '?' + query : '')).then(r => r.json());
+  DADOS = data; META = data.meta; ATENCAO = data.atencao;
+  filtroBanda = null;
+  statusSel = null;
+  popularTransp(data.lista_transportadoras, data.transp);
+  $('#exportBtn').href = '/api/scorecard/export.xlsx' + (query ? '?' + query : '');
+  // chip de estado selecionado
+  const chip = $('#ufChip');
+  if (ufsSel.length) { chip.style.display = 'inline-flex'; chip.innerHTML = `Estado${ufsSel.length > 1 ? 's' : ''}: <b>&nbsp;${ufsSel.join(', ')}</b>&nbsp; ✕`; }
+  else chip.style.display = 'none';
+  renderKpis(data.resumo);
+  renderAtrasos(data.resumo);
+  renderMapa($('#chartMapa'), $('#mapaRank'), data.por_estado);
+  renderPainel();   // barras (OTD), tabela, pizza e evolução — todas interativas
+}
+$('#ufChip').addEventListener('click', () => { ufsSel = []; load(); });
+$('#transpFilter').addEventListener('change', load);
+$('#mesFilter').addEventListener('change', load);
+$('#refreshBtn').addEventListener('click', load);
+
+(async () => { await loadMeses(); await load(); })();
+</script>
+
+<script src="/static/auth.js" defer></script>
+</body>
+</html>

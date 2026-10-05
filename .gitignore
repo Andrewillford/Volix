@@ -1,0 +1,59 @@
+__pycache__/
+*.pyc
+.env
+
+# Bancos gerados em runtime — histórico de auditoria, torre de entregas, base de
+# acordo (cadastro), conferência de fatura e o login (usuários + hashes de senha).
+# São dados operacionais/credenciais e reconstituíveis (o cadastro auto-semeia dos
+# Excel versionados no 1º boot). NÃO devem ir para o controle de versão.
+tables/*.db
+
+# Estado de runtime da sincronização com o Olist (cursor da última sync).
+tables/olist_sync.json
+# Índice de custos por SKU montado das notas de entrada (cache reconstituível).
+tables/olist_custos.json
+# Estado da sincronização de vendas e cache de dimensões por SKU (reconstituíveis).
+tables/vendas_sync.json
+tables/olist_dimensoes.json
+# Estado do carteiro de e-mail (última leitura).
+tables/email_ingest.json
+
+# Arquivos operacionais das transportadoras (EDI OCOREN e XMLs de CTe, reais ou de
+# teste) — só a estrutura de pastas é versionada (.gitkeep).
+edi/*
+!edi/.gitkeep
+cte_xml/**/*.xml
+cte_xml/**/*.zip
+# DOCCOB baixados do e-mail (dados reais de cobrança) — fora do versionamento.
+doccob/
+
+# Estado de runtime das sincronizações SSW/Jamef e cache de conjuntos (kits) do
+# Olist — todos reconstituíveis, fora do versionamento.
+tables/ssw_sync.json
+tables/jamef_webhook_sync.json
+tables/olist_conjuntos.json
+
+# Log do servidor de desenvolvimento (uvicorn).
+scratchpad_uvicorn.log
+
+# Ferramentas de skill instaladas localmente (não fazem parte do produto).
+.agents/
+.claude/skills/
+skills-lock.json
+
+# Fixtures de teste/demonstração (gerados por script) e arquivos movidos pelo
+# resetar_base.py — fora do versionamento.
+dados_teste/
+_arquivo_teste/
+fatura_teste_conferencia.xlsx
+
+# Clone acidental do próprio repositório dentro da pasta (pasta com o nome do repo).
+volix-logistica/
+
+# Backups locais dos bancos (dados reais) — nunca versionar.
+backups/
+tables/*.db.bak*
+
+# Prints com dados reais (fonte do manual) e scripts temporários — não versionar.
+prints_manual/
+scratch_*

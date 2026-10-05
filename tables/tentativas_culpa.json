@@ -1,0 +1,5 @@
+{
+  "_ajuda": "Classifica os codigos de ocorrencia de TENTATIVA_FRUSTRADA por CULPA, para o OTD ajustado da Torre. 'cliente' = tentativa no prazo perdoa a transportadora (conta como no prazo); 'transportadora' = atraso real dela, NAO perdoa. Codigos normalizados: sem zeros a esquerda, minimo 2 digitos (021->21); os SSW-XX ficam como estao. Editavel: apos alterar, use 'Recarregar codigos de ocorrencia' no painel.",
+  "cliente": ["03", "04", "21", "34", "45", "46", "47", "56", "59", "61", "62", "71", "72", "74", "88", "SSW-21", "SSW-27", "JAMEF-10"],
+  "transportadora": ["06", "13", "20", "55", "57", "60", "75", "76", "77", "SSW-06", "SSW-68"]
+}

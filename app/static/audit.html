@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Auditoria de CTe — LogHub</title>
+<link rel="stylesheet" href="/static/volix.css" />
+<style>
+  /* Volix (tokens + menu lateral + cabeçalho) vem de /static/volix.css.
+     Aqui só o CSS específico da Auditoria + a paleta dos gráficos (BI) desta tela. */
+  :root {
+    /* paleta validada (dataviz skill) — usada só nos gráficos da seção de indicadores */
+    --viz-good: #0ca30c; --viz-warning: #fab219; --viz-critical: #d03b3b;
+    --viz-blue: #3987e5; --viz-violet: #9085e9;
+    --viz-grid: #2c2c2a; --viz-baseline: #383835; --viz-muted: #898781; --viz-ink: #ffffff;
+  }
+
+  main { max-width: none; }  /* ocupa a tela toda; tabela larga rola na horizontal */
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 20px; }
+  .panel h2 { margin: 0 0 12px; font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .dropzone {
+    flex: 1; min-width: 280px; border: 2px dashed var(--border); border-radius: 8px; padding: 24px;
+    text-align: center; color: var(--muted); cursor: pointer; transition: border-color .15s;
+  }
+  .dropzone.drag { border-color: var(--accent); color: var(--text); }
+  .dropzone input { display: none; }
+
+  button { background: var(--accent); color: #fff; border: none; padding: 9px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  button:hover { opacity: .9; }
+  button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+
+  label.inline { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  input[type=number] { width: 70px; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 5px 7px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+  tbody tr:hover { background: rgba(255,255,255,.02); }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge.OK { background: var(--ok-bg); color: var(--ok); }
+  .badge.DIVERGENTE { background: var(--bad-bg); color: var(--bad); }
+  .badge.SPOT { background: var(--spot-bg); color: var(--spot); }
+  .badge.TRANSPORTADORA_NAO_MAPEADA, .badge.SEM_TABELA, .badge.SEM_COBERTURA, .badge.SEM_VALOR_COBRADO, .badge.DEVOLUCAO_SEM_IDA, .badge.REENTREGA_SEM_ORIGEM { background: var(--warn-bg); color: var(--warn); }
+  .badge.CANCELADO { background: #3d3d3d; color: #bbb; }
+  .badge.JA_LANCADO { background: var(--warn-bg); color: var(--warn); }
+  .badge.ERRO_LEITURA { background: var(--bad-bg); color: var(--bad); }
+
+  .diff-pos { color: var(--bad); }
+  .diff-neg { color: var(--ok); }
+
+  nav.pages { display: flex; gap: 8px; }
+  nav.pages a { color: var(--muted); text-decoration: none; font-size: 13px; padding: 7px 14px; border: 1px solid var(--border); border-radius: 20px; }
+  nav.pages a:hover { color: var(--text); border-color: var(--accent); }
+  nav.pages a.active { color: #fff; background: var(--accent); border-color: var(--accent); }
+
+
+  .map-inline { display: flex; gap: 6px; align-items: center; }
+  select { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 5px; font-size: 12px; }
+
+  .summary { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .summary .stat { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; font-size: 12px; }
+  .summary .stat b { font-size: 16px; display: block; }
+
+  .empty { color: var(--muted); font-size: 13px; padding: 20px 0; text-align: center; }
+  .toast { position: fixed; bottom: 20px; right: 20px; background: var(--panel); border: 1px solid var(--border); padding: 10px 16px; border-radius: 8px; font-size: 13px; display: none; }
+
+  /* ─── Indicadores (BI) ─────────────────────────────────────────────── */
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 20px; }
+  .kpi-tile { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+  .kpi-tile .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+  .kpi-tile .kpi-value { font-size: 22px; font-weight: 600; margin-top: 4px; }
+  .kpi-tile .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .kpi-tile.accent-good .kpi-value { color: var(--viz-good); }
+  .kpi-tile.accent-critical .kpi-value { color: var(--viz-critical); }
+  .kpi-tile.clic { cursor: pointer; transition: border-color .12s, background .12s, transform .06s, box-shadow .12s; }
+  .kpi-tile.clic:hover { border-color: var(--muted); }
+  .kpi-tile.clic:active { transform: translateY(1px); }
+  .kpi-tile.clic::after { content: '⤵'; float: right; font-size: 11px; color: var(--muted); margin-top: -14px; opacity: .5; }
+  .kpi-tile.clic:hover::after { opacity: 1; color: var(--accent); }
+  .kpi-tile.sel { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: rgba(59,130,246,.10); }
+  .kpi-tile.sel::after { content: '✕'; color: var(--accent); opacity: 1; }
+
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
+  .chart-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .chart-card h3 { margin: 0 0 10px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; font-weight: 600; }
+  .chart-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; font-size: 11px; color: var(--muted); }
+  .chart-legend .lg-item { display: flex; align-items: center; gap: 5px; }
+  .chart-legend .lg-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .viz-bar { cursor: pointer; }
+  .viz-bar:hover { filter: brightness(1.15); }
+  .viz-active-chip { background: var(--accent); color: #fff; border-radius: 20px; padding: 3px 10px; font-size: 11px; display: inline-flex; align-items: center; gap: 6px; }
+  .viz-active-chip button { background: transparent; border: none; color: #fff; padding: 0; cursor: pointer; font-size: 13px; line-height: 1; }
+  .viz-tooltip {
+    position: fixed; background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 10px; font-size: 12px; pointer-events: none; display: none; z-index: 50;
+    box-shadow: 0 4px 12px rgba(0,0,0,.4);
+  }
+
+  /* ─── Modal de comparação / aprovação ──────────────────────────────── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 200;
+    display: none; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto;
+  }
+  .modal-box {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 22px 24px; max-width: 720px; width: 100%;
+  }
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 10px 0; }
+  .compare-table th, .compare-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: right; }
+  .compare-table th:first-child, .compare-table td:first-child { text-align: left; }
+  .compare-table th { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+  .compare-table tr.divergente td { background: rgba(239,68,68,.10); color: var(--bad); font-weight: 600; }
+  .compare-table tr.nao-reconhecido td { background: rgba(245,158,11,.10); color: var(--warn); font-weight: 600; }
+  .compare-table tr.total td { border-top: 2px solid var(--border); font-weight: 700; font-size: 14px; }
+
+  .aprov-info { padding: 10px 12px; border-radius: 8px; font-size: 13px; margin: 10px 0; }
+  .aprov-info.aprov-auto { background: var(--ok-bg); color: var(--ok); }
+  .aprov-info.aprov-sim { background: var(--ok-bg); color: var(--ok); }
+  .aprov-info.aprov-nao { background: var(--bad-bg); color: var(--bad); }
+  .aprov-box { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .aprov-box textarea {
+    width: 100%; min-height: 64px; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); border-radius: 6px; padding: 8px; font-size: 13px; font-family: inherit; resize: vertical;
+  }
+
+  .badge.aprov-AUTOMATICA { background: var(--ok-bg); color: var(--ok); }
+  .badge.aprov-PENDENTE { background: var(--warn-bg); color: var(--warn); }
+  .badge.aprov-APROVADO_MANUAL { background: var(--ok-bg); color: var(--ok); }
+  .badge.aprov-REPROVADO_MANUAL { background: var(--bad-bg); color: var(--bad); }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <svg class="brand-iso" width="42" height="42" viewBox="0 0 40 40" aria-label="Volix"><defs><clipPath id="sbL"><rect x="0" y="0" width="19" height="40"/></clipPath><clipPath id="sbR"><rect x="21" y="0" width="19" height="40"/></clipPath></defs><g clip-path="url(#sbL)" fill="#f3f5f4"><rect x="3" y="15.5" width="34" height="9" rx="4.5" transform="rotate(45 20 20)"/><rect x="3" y="15.5" width="34" height="9" rx="4.5" transform="rotate(-45 20 20)"/></g><g clip-path="url(#sbR)" fill="#c8f135"><rect x="3" y="15.5" width="34" height="9" rx="4.5" transform="rotate(45 20 20)"/><rect x="3" y="15.5" width="34" height="9" rx="4.5" transform="rotate(-45 20 20)"/></g></svg>
+    <div class="volix">Log<b>H</b>ub</div>
+    <div class="glow"></div>
+    <div class="tag">Sua logística <b>num só lugar</b></div>
+  </div>
+  <nav class="side-nav">
+    <a href="/home">🏠 Início</a>
+    <div class="sec">Financeiro</div>
+    <a href="/audit" class="active">📋 Auditoria de CTe</a>
+    <a href="/percent-nf">💰 Frete sobre Faturamento</a>
+    <a href="/conferencia">🧾 Conferência de Fatura</a>
+    <div class="sec">Suprimentos</div>
+    <a href="/coletas">🚚 Coleta em Fornecedores</a>
+    <div class="sec">Expedição</div>
+    <a href="/romaneio">📦 Romaneio de Expedição</a>
+    <div class="sec">Entregas</div>
+    <a href="/tracking">🗼 Torre de Controle</a>
+    <a href="/relatorio-dia">📨 Relatório do Dia</a>
+    <a href="/scorecard">🏆 Scorecard de Desempenho</a>
+    <div class="sec">Comercial</div>    <a href="/vendas">📈 Análise de Vendas</a>
+    <div class="sec">Configuração</div>
+    <a href="/cadastro">🗂️ Cadastro de Tabelas</a>
+  </nav>
+</aside>
+
+<header>
+  <svg class="vmark" width="40" height="40" viewBox="0 0 40 40" aria-label="Volix" style="color:var(--text)"><defs><clipPath id="vmkL"><rect x="0" y="0" width="19" height="40"/></clipPath><clipPath id="vmkR"><rect x="21" y="0" width="19" height="40"/></clipPath></defs><g clip-path="url(#vmkL)" fill="currentColor"><rect x="3" y="15.5" width="34" height="9" rx="4.5" transform="rotate(45 20 20)"/><rect x="3" y="15.5" width="34" height="9" rx="4.5" transform="rotate(-45 20 20)"/></g><g clip-path="url(#vmkR)" fill="#C8F135"><rect x="3" y="15.5" width="34" height="9" rx="4.5" transform="rotate(45 20 20)"/><rect x="3" y="15.5" width="34" height="9" rx="4.5" transform="rotate(-45 20 20)"/></g></svg>
+  <h1>Auditoria de CTe</h1>
+  <p>Auditoria de CTe — carregue os XML dos CTes e compare automaticamente com as tabelas de frete contratadas.</p>
+</header>
+
+<main>
+
+  <div class="panel">
+    <h2>1. Enviar CTes</h2>
+    <div class="row">
+      <div class="dropzone" id="dropzone">
+        <div>Arraste os arquivos .xml ou .pdf (RPS/NFS-e) aqui ou clique para selecionar</div>
+        <div style="font-size:11px;margin-top:4px;">(pode selecionar vários de uma vez)</div>
+        <input type="file" id="fileInput" multiple accept=".xml,.pdf" />
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <button class="secondary" id="scanFolderBtn" type="button">Escanear pasta de entrada (cte_xml/entrada)</button>
+        <div style="font-size:11px;color:var(--muted);max-width:260px;">
+          Deposite os .xml (CT-e) ou .pdf (RPS/NFS-e de serviço intramunicipal) em <code>cte_xml/entrada</code> no servidor. Depois de auditar, cada arquivo é movido para
+          <code>processados/ok</code> ou <code>processados/nok</code> automaticamente.
+        </div>
+        <div class="row">
+          <label class="inline">Tolerância R$ <input type="number" id="tolAbs" value="1.00" step="0.5" /></label>
+          <label class="inline">Tolerância % <input type="number" id="tolPct" value="2.0" step="0.5" /></label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="resultsPanel" style="display:none;">
+    <h2>2. Resultado da auditoria</h2>
+    <div class="summary" id="summary"></div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th style="max-width:130px;">Arquivo / CTe</th>
+            <th>Tipo</th>
+            <th>NF</th>
+            <th>Transportadora</th>
+            <th>Rota</th>
+            <th class="num">Peso (kg)</th>
+            <th class="num">Cobrado (R$)</th>
+            <th class="num">Tabela (R$)</th>
+            <th class="num">Diferença</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="empty" id="emptyState">Nenhum CTe auditado ainda nesta sessão.</div>
+
+  <div class="panel">
+    <h2>3. Histórico de auditorias</h2>
+    <div class="row" style="margin-bottom:14px;">
+      <label class="inline">Mês <input type="month" id="histMes" /></label>
+      <label class="inline">Transportadora
+        <select id="histTransportadora"><option value="">Todas</option></select>
+      </label>
+      <label class="inline">Status
+        <select id="histStatus">
+          <option value="">Todos</option>
+          <option value="OK">OK</option>
+          <option value="DIVERGENTE">Divergente</option>
+          <option value="OUTROS">Outros (agrupado)</option>
+          <option value="SPOT">Spot / sem tabela</option>
+          <option value="TRANSPORTADORA_NAO_MAPEADA">Não mapeada</option>
+          <option value="SEM_TABELA">Sem tabela</option>
+          <option value="SEM_COBERTURA">Sem cobertura</option>
+          <option value="SEM_VALOR_COBRADO">Sem valor cobrado</option>
+          <option value="ERRO_LEITURA">Erro leitura</option>
+          <option value="DEVOLUCAO_SEM_IDA">Devolução sem ida encontrada</option>
+          <option value="REENTREGA_SEM_ORIGEM">Reentrega sem origem encontrada</option>
+          <option value="CANCELADO">Cancelado</option>
+          <option value="JA_LANCADO">Já lançado na fatura</option>
+        </select>
+      </label>
+      <label class="inline">Busca <input type="text" id="histSearch" placeholder="arquivo, nº CTe, chave…" style="width:160px;" /></label>
+      <button class="secondary" id="histFilterBtn" type="button">Filtrar</button>
+      <button id="histExportBtn" type="button">📄 Exportar relatório (Excel)</button>
+      <button class="secondary" id="histExportCsvBtn" type="button">Exportar CSV</button>
+    </div>
+    <div class="summary" id="histSummary"></div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>Emissão</th>
+            <th style="max-width:130px;">Arquivo / CTe</th>
+            <th>Tipo</th>
+            <th>NF</th>
+            <th>Transportadora</th>
+            <th>Rota</th>
+            <th class="num">Cobrado (R$)</th>
+            <th class="num">Tabela (R$)</th>
+            <th class="num">Diferença</th>
+            <th>Status</th>
+            <th>Aprovação</th>
+            <th style="min-width:220px;">Observações (pontos p/ auditoria futura)</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="historyLoading" style="display:none;" aria-live="polite">Carregando histórico…</div>
+    <div class="empty" id="historyEmpty" style="display:none;">Nenhum registro no histórico com esses filtros.</div>
+    <div class="empty" id="historyErro" style="display:none;">
+      Falha ao carregar o histórico. <button type="button" class="secondary" id="histRetryBtn">Tentar de novo</button>
+    </div>
+    <div id="histPager"></div>
+  </div>
+
+  <div class="panel">
+    <h2>4. Indicadores</h2>
+    <div class="row" style="margin-bottom:10px;">
+      <label class="inline">Mês
+        <select id="bizMes"><option value="">Todos</option></select>
+      </label>
+      <label class="inline">Transportadora
+        <select id="bizTransportadora"><option value="">Todas</option></select>
+      </label>
+      <button class="secondary" id="bizClearBtn" type="button">Limpar filtros</button>
+      <span id="bizActiveFilter" style="font-size:12px;color:var(--muted);"></span>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;">💡 Clique numa barra dos gráficos abaixo para filtrar o histórico e os indicadores por aquele mês, status ou transportadora.</div>
+
+    <div class="kpi-row" id="bizKpiRow"></div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>CTEs por mês</h3>
+        <div id="chartCtesPorMes"></div>
+      </div>
+      <div class="chart-card">
+        <h3>Valor cobrado × valor tabela por mês</h3>
+        <div id="chartValoresPorMes"></div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Divergência por transportadora (R$)</h3>
+      <div id="chartDivergenciaTransp"></div>
+    </div>
+    <div class="empty" id="bizEmpty" style="display:none;">Sem dados para os filtros selecionados.</div>
+  </div>
+
+</main>
+
+<div class="viz-tooltip" id="vizTooltip"></div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="cteModalOverlay">
+  <div class="modal-box" id="cteModalBox"></div>
+</div>
+
+<script src="/static/pager.js"></script>
+<script>
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const scanFolderBtn = document.getElementById('scanFolderBtn');
+const resultsPanel = document.getElementById('resultsPanel');
+const resultsBody = document.getElementById('resultsBody');
+const summaryEl = document.getElementById('summary');
+const emptyState = document.getElementById('emptyState');
+const toast = document.getElementById('toast');
+
+const histMes = document.getElementById('histMes');
+const histTransportadora = document.getElementById('histTransportadora');
+const histStatus = document.getElementById('histStatus');
+const histSearch = document.getElementById('histSearch');
+const histFilterBtn = document.getElementById('histFilterBtn');
+const histExportBtn = document.getElementById('histExportBtn');
+const histExportCsvBtn = document.getElementById('histExportCsvBtn');
+const histSummaryEl = document.getElementById('histSummary');
+const historyBody = document.getElementById('historyBody');
+const historyEmpty = document.getElementById('historyEmpty');
+const historyLoading = document.getElementById('historyLoading');
+const historyErro = document.getElementById('historyErro');
+const histPager = document.getElementById('histPager');
+let histOffset = 0, histLimit = 100, histTotal = 0;
+
+const bizMes = document.getElementById('bizMes');
+const bizTransportadora = document.getElementById('bizTransportadora');
+const bizKpiRow = document.getElementById('bizKpiRow');
+const bizEmpty = document.getElementById('bizEmpty');
+const bizClearBtn = document.getElementById('bizClearBtn');
+const bizActiveFilter = document.getElementById('bizActiveFilter');
+const vizTooltip = document.getElementById('vizTooltip');
+const cteModalOverlay = document.getElementById('cteModalOverlay');
+const cteModalBox = document.getElementById('cteModalBox');
+
+let carriersDisponiveis = [];
+let currentUser = null;
+
+async function loadCurrentUser() {
+  try {
+    const resp = await fetch('/api/auth/status');
+    const data = await resp.json();
+    currentUser = data.user || null;
+  } catch (e) { currentUser = null; }
+}
+
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.style.display = 'block';
+  setTimeout(() => toast.style.display = 'none', 3500);
+}
+
+function fmt(v) {
+  if (v === null || v === undefined) return '—';
+  return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+const _ESCAPE_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+function escapeHtml(v) {
+  if (v === null || v === undefined) return '';
+  return String(v).replace(/[&<>"']/g, c => _ESCAPE_MAP[c]);
+}
+
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('drag');
+  if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length) uploadFiles(fileInput.files);
+});
+
+async function loadCarrierList() {
+  try {
+    const resp = await fetch('/api/carrier-mapping');
+    const data = await resp.json();
+    carriersDisponiveis = data.transportadoras_disponiveis || [];
+    const optionsHtml = '<option value="">Todas</option>' +
+      carriersDisponiveis.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    histTransportadora.innerHTML = optionsHtml;
+    bizTransportadora.innerHTML = optionsHtml;
+  } catch (e) { /* silencioso */ }
+}
+
+async function loadMeses() {
+  try {
+    const resp = await fetch('/api/audit/history/meses');
+    const meses = await resp.json();
+    bizMes.innerHTML = '<option value="">Todos</option>' +
+      meses.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
+  } catch (e) { /* silencioso */ }
+}
+
+function tol() {
+  return {
+    tol_abs: parseFloat(document.getElementById('tolAbs').value) || 0,
+    tol_pct: parseFloat(document.getElementById('tolPct').value) || 0,
+  };
+}
+
+async function uploadFiles(fileList) {
+  const fd = new FormData();
+  for (const f of fileList) fd.append('files', f);
+  const { tol_abs, tol_pct } = tol();
+  showToast(`Enviando ${fileList.length} arquivo(s)…`);
+  try {
+    const resp = await fetch(`/api/audit?tol_abs=${tol_abs}&tol_pct=${tol_pct}`, { method: 'POST', body: fd });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      showToast('Erro ao auditar (' + resp.status + '): ' + (err.detail || resp.statusText));
+      return;
+    }
+    renderResults(await resp.json());
+  } catch (e) {
+    showToast('Falha de conexão com o servidor: ' + e.message + '. Acesse esta página pela URL do servidor (http://.../audit), não abrindo o arquivo direto.');
+  } finally {
+    fileInput.value = '';
+  }
+}
+
+scanFolderBtn.addEventListener('click', async () => {
+  const { tol_abs, tol_pct } = tol();
+  scanFolderBtn.disabled = true;
+  try {
+    const resp = await fetch(`/api/audit/scan-folder?tol_abs=${tol_abs}&tol_pct=${tol_pct}`, { method: 'POST' });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      showToast(err.detail || ('Erro ' + resp.status));
+      return;
+    }
+    const results = await resp.json();
+    renderResults(results);
+    const ok = results.filter(r => r.status === 'OK').length;
+    const nok = results.length - ok;
+    showToast(`${results.length} CTe(s) processado(s): ${ok} foram para processados/ok, ${nok} para processados/nok.`);
+  } finally {
+    scanFolderBtn.disabled = false;
+  }
+});
+
+function statusLabel(s) {
+  return {
+    OK: 'OK', DIVERGENTE: 'Divergente', SPOT: 'Spot / sem tabela',
+    TRANSPORTADORA_NAO_MAPEADA: 'Não mapeada', SEM_TABELA: 'Sem tabela',
+    SEM_COBERTURA: 'Sem cobertura', SEM_VALOR_COBRADO: 'Sem valor cobrado',
+    ERRO_LEITURA: 'Erro leitura', DEVOLUCAO_SEM_IDA: 'Devolução sem ida encontrada',
+    REENTREGA_SEM_ORIGEM: 'Reentrega sem origem encontrada', CANCELADO: 'Cancelado',
+    JA_LANCADO: 'Já lançado na fatura',
+  }[s] || s;
+}
+
+function tipoCteLabel(r) {
+  if (r.status === 'CANCELADO') return 'Cancelado';
+  if (r.tipo_operacao === 'DEVOLUCAO') return 'Devolução';
+  if (r.tipo_operacao === 'REENTREGA') return 'Reentrega';
+  return 'Normal';
+}
+
+function tipoCteStyle(r) {
+  if (r.status === 'CANCELADO') return 'background:#3d3d3d;color:#bbb;';
+  if (r.tipo_operacao === 'DEVOLUCAO' || r.tipo_operacao === 'REENTREGA') return 'background:#3a2f5c;color:#c9b8ff;';
+  return 'background:#233;color:#8fb;';
+}
+
+function aprovLabel(s) {
+  return {
+    AUTOMATICA: 'Automática', PENDENTE: 'Pendente',
+    APROVADO_MANUAL: 'Aprovado manual', REPROVADO_MANUAL: 'Reprovado manual',
+  }[s] || (s || '—');
+}
+
+// ─── Modal de comparação (Tabela x CTe) e aprovação manual ─────────────────
+
+const CHARGE_LABELS = {
+  frete_peso: 'Frete Peso', gris: 'GRIS', pos: 'POS', ad_valorem: 'Ad Valorem',
+  frete_val: 'Frete Valor Declarado', pedagio: 'Pedágio', tas: 'TAS',
+  despacho: 'Despacho', sec_cat: 'Seg/Cat',
+  tda: 'TDA', trt: 'TRT', emex: 'EMEX', tde: 'TDE',
+  tec: 'TEC', icms: 'ICMS',
+};
+// Termos exatos (após normalizar) que identificam cada componente no nome livre
+// que o CTe declara — de propósito conservador: prefere não achar a achar errado.
+const CHARGE_MATCH_HINTS = {
+  frete_peso: ['FRETEPESO'], gris: ['GRIS'], pos: ['POS', 'TSO', 'RCV'], ad_valorem: ['ADVALOREM'],
+  frete_val: ['FRETEVALOR', 'VALORDECLARADO'], pedagio: ['PEDAGIO'], tas: ['TAS'],
+  despacho: ['DESPACHO'], sec_cat: ['SECCAT'],
+  tda: ['TDA'], trt: ['TRT'], emex: ['EMEX'], tde: ['TDE'],
+  tec: ['TEC'], icms: ['ICMS'],
+};
+// Componentes que o CTe declara só a título informativo — repetem o valor de outra
+// linha (ex.: "IMP REPASSADO" = a própria ICMS já listada) e não são uma cobrança
+// adicional. Ficam de fora da comparação E da lista de "não reconhecidos" pra não
+// aparentar um 2º gap onde na verdade é o mesmo valor contado uma vez só.
+const CHARGE_INFORMATIONAL_HINTS = ['IMPREPASSADO'];
+
+const _DIACRITICS_RE = new RegExp('[\\u0300-\\u036f]', 'g');
+function _normComp(s) {
+  return (s || '').toString().normalize('NFD').replace(_DIACRITICS_RE, '')
+    .replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+}
+
+function matchComponente(key, componentesCte) {
+  if (!componentesCte || !componentesCte.length) return null;
+  const hints = CHARGE_MATCH_HINTS[key] || [];
+  for (const c of componentesCte) {
+    const norm = _normComp(c.nome);
+    if (hints.some(h => norm.includes(h))) return c.valor;
+  }
+  return null;
+}
+
+// Componentes que o CTe declarou e que NÃO batem com nenhuma chave que calculamos
+// nem são um informativo conhecido (ex.: "IMP REPASSADO") — são cobranças reais
+// que estão pesando na diferença total sem aparecer em lugar nenhum da comparação.
+function componentesNaoReconhecidos(componentesCte) {
+  if (!componentesCte || !componentesCte.length) return [];
+  const todosHints = Object.values(CHARGE_MATCH_HINTS).flat().concat(CHARGE_INFORMATIONAL_HINTS);
+  return componentesCte.filter(c => {
+    const norm = _normComp(c.nome);
+    return !todosHints.some(h => norm.includes(h));
+  });
+}
+
+function buildComparisonRows(chargesTabela, componentesCte) {
+  if (!chargesTabela) return '';
+  return Object.keys(CHARGE_LABELS).map(key => {
+    const tabelaVal = chargesTabela[key] || 0;
+    const cteVal = matchComponente(key, componentesCte);
+    if (tabelaVal <= 0 && cteVal === null) return '';
+    const divergente = cteVal !== null && Math.abs(tabelaVal - cteVal) > 0.01;
+    return `
+      <tr class="${divergente ? 'divergente' : ''}">
+        <td>${escapeHtml(CHARGE_LABELS[key])}</td>
+        <td class="num">R$ ${fmt(tabelaVal)}</td>
+        <td class="num">${cteVal === null ? '<span style="color:var(--muted);">não localizado</span>' : 'R$ ' + fmt(cteVal)}</td>
+        <td class="num">${cteVal === null ? '—' : 'R$ ' + fmt(cteVal - tabelaVal)}</td>
+      </tr>`;
+  }).join('');
+}
+
+function closeCteModal() {
+  cteModalOverlay.style.display = 'none';
+  cteModalBox.innerHTML = '';
+}
+cteModalOverlay.addEventListener('click', (e) => { if (e.target === cteModalOverlay) closeCteModal(); });
+
+async function openCteModal(chaveCte) {
+  if (!chaveCte) { showToast('Este registro não tem chave de CTe válida para detalhar.'); return; }
+  try {
+    const resp = await fetch('/api/audit/history/' + encodeURIComponent(chaveCte));
+    if (!resp.ok) { showToast('Não foi possível carregar os detalhes deste CTe.'); return; }
+    renderCteModal(await resp.json());
+  } catch (e) {
+    showToast('Falha ao carregar detalhes: ' + e.message);
+  }
+}
+
+function renderCteModal(r) {
+  const diffTotal = (r.diferenca !== null && r.diferenca !== undefined) ? r.diferenca : null;
+  const diffClass = diffTotal > 0 ? 'diff-pos' : (diffTotal < 0 ? 'diff-neg' : '');
+
+  let comparisonHtml;
+  if (r.valor_tabela !== null && r.valor_tabela !== undefined) {
+    const naoReconhecidos = componentesNaoReconhecidos(r.componentes_cte);
+    const naoReconhecidosRows = naoReconhecidos.map(c => `
+      <tr class="nao-reconhecido">
+        <td>${escapeHtml(c.nome)} <span style="color:var(--warn);font-size:10px;">sem regra cadastrada</span></td>
+        <td class="num">—</td>
+        <td class="num">R$ ${fmt(c.valor)}</td>
+        <td class="num">+R$ ${fmt(c.valor)}</td>
+      </tr>`).join('');
+    comparisonHtml = `
+      <table class="compare-table">
+        <thead><tr><th>Componente</th><th class="num">Tabela</th><th class="num">CTe (declarado)</th><th class="num">Diferença</th></tr></thead>
+        <tbody>
+          ${buildComparisonRows(r.charges_tabela, r.componentes_cte)}
+          ${naoReconhecidosRows}
+          <tr class="total">
+            <td>TOTAL</td>
+            <td class="num">R$ ${fmt(r.valor_tabela)}</td>
+            <td class="num">R$ ${fmt(r.valor_cobrado)}</td>
+            <td class="num ${diffClass}">${diffTotal !== null ? (diffTotal > 0 ? '+' : '') + 'R$ ' + fmt(diffTotal) : '—'}</td>
+          </tr>
+        </tbody>
+      </table>
+      ${naoReconhecidos.length ? `<p style="color:var(--warn);font-size:12px;margin-top:6px;">⚠️ ${naoReconhecidos.length === 1 ? 'Este componente aparece no CTe mas não tem' : 'Estes componentes aparecem no CTe mas não têm'} regra de cálculo cadastrada na tabela desta transportadora — por isso ${naoReconhecidos.length === 1 ? 'pesa' : 'pesam'} na diferença total sem ser explicado(s) item a item.</p>` : ''}`;
+  } else {
+    comparisonHtml = `<p style="color:var(--muted);font-size:13px;">Não há valor de tabela para comparar (${escapeHtml(statusLabel(r.status))}). Valor cobrado no CTe: <b>R$ ${fmt(r.valor_cobrado)}</b>.</p>`;
+  }
+
+  let mappingUi = '';
+  if (r.status === 'TRANSPORTADORA_NAO_MAPEADA') {
+    const options = carriersDisponiveis.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    mappingUi = `
+      <div class="map-inline" style="margin:12px 0;">
+        <select id="modalCnpjSelect">
+          <option value="">Selecione a transportadora na tabela…</option>
+          ${options}
+        </select>
+        <button id="modalMapBtn" data-cnpj="${escapeHtml(r.transportadora_cnpj)}">Vincular</button>
+        <button class="secondary" id="modalSpotBtn" data-cnpj="${escapeHtml(r.transportadora_cnpj)}">Marcar como Spot</button>
+      </div>`;
+  }
+
+  let vincularUi = '';
+  if (r.status === 'DEVOLUCAO_SEM_IDA' || r.status === 'REENTREGA_SEM_ORIGEM') {
+    vincularUi = `
+      <div class="map-inline" style="margin:12px 0;">
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px;">
+          A auditoria não achou o CT-e de ida (nem pela NF, nem pelo cliente) — digite o nº da NF de origem pra vincular manualmente:
+        </label>
+        <input type="text" id="modalNfIda" placeholder="nº da NF de origem…" style="width:160px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:7px 9px;font-size:13px;" />
+        <button id="modalVincularBtn">🔗 Vincular</button>
+      </div>`;
+  }
+
+  let aprovUi = '';
+  if (r.aprovacao_status === 'AUTOMATICA') {
+    aprovUi = `<div class="aprov-info aprov-auto">✅ Aprovado automaticamente — CTe bate com a tabela dentro da tolerância.</div>`;
+  } else {
+    const jaDecidido = r.aprovacao_status === 'APROVADO_MANUAL' || r.aprovacao_status === 'REPROVADO_MANUAL';
+    let statusLine = '';
+    if (jaDecidido) {
+      const aprovado = r.aprovacao_status === 'APROVADO_MANUAL';
+      const quando = r.aprovado_em ? escapeHtml(r.aprovado_em.slice(0, 16).replace('T', ' ')) : '—';
+      statusLine = `
+        <div class="aprov-info ${aprovado ? 'aprov-sim' : 'aprov-nao'}">
+          ${aprovado ? '✅ Aprovado' : '❌ Reprovado'} manualmente por <b>${escapeHtml(r.aprovado_por || '—')}</b> em ${quando}<br>
+          <span style="opacity:.85;">Justificativa: ${escapeHtml(r.justificativa || '—')}</span>
+        </div>`;
+    }
+    const quemDecide = currentUser ? `como <b>${escapeHtml(currentUser.nome || currentUser.login)}</b>` : '';
+    aprovUi = `
+      ${statusLine}
+      <div class="aprov-box">
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px;">
+          ${jaDecidido ? 'Alterar decisão' : 'Decisão'} ${quemDecide}
+        </label>
+        <textarea id="modalJustificativa" placeholder="Justificativa (obrigatória)…">${escapeHtml(r.justificativa || '')}</textarea>
+        <div class="row" style="margin-top:8px;">
+          <button id="modalAprovarBtn">✅ Aprovar</button>
+          <button class="secondary" id="modalReprovarBtn" style="border-color:var(--bad);color:var(--bad);">❌ Reprovar</button>
+        </div>
+      </div>`;
+  }
+
+  cteModalBox.innerHTML = `
+    <button type="button" class="secondary" id="modalCloseBtn" aria-label="Fechar detalhes do CTe" title="Fechar" style="float:right;padding:4px 10px;">✕</button>
+    <h3 style="margin-top:0;">CTe ${escapeHtml(r.numero_cte || '—')} — ${escapeHtml(r.arquivo || '')}</h3>
+    <div style="color:var(--muted);font-size:13px;margin-bottom:14px;">
+      ${escapeHtml(r.transportadora_tabela || r.transportadora_nome_cte || '—')} · ${escapeHtml(r.origem || '?')} → ${escapeHtml(r.destino || '?')}
+      · Emissão: ${r.data_emissao ? escapeHtml(r.data_emissao.slice(0, 10).split('-').reverse().join('/')) : '—'}
+    </div>
+    <div style="margin-bottom:10px;"><span class="badge ${r.status}">${escapeHtml(statusLabel(r.status))}</span> <span class="badge" style="${tipoCteStyle(r)}">${tipoCteLabel(r)}</span> ${r.numero_nf ? `<span style="color:var(--muted);font-size:12px;">NF ${escapeHtml(r.numero_nf)}</span>` : ''} ${escapeHtml(r.motivo || '')}</div>
+    ${mappingUi}
+    ${vincularUi}
+    ${comparisonHtml}
+    ${aprovUi}
+  `;
+  cteModalOverlay.style.display = 'flex';
+
+  document.getElementById('modalCloseBtn').addEventListener('click', closeCteModal);
+
+  const mapBtn = document.getElementById('modalMapBtn');
+  if (mapBtn) {
+    mapBtn.addEventListener('click', async () => {
+      const sel = document.getElementById('modalCnpjSelect');
+      if (!sel.value) { showToast('Selecione uma transportadora.'); return; }
+      await saveMapping(mapBtn.dataset.cnpj, sel.value);
+      showToast('Mapeamento salvo. Reenvie/reescaneie o CTe para reauditar.');
+      closeCteModal();
+    });
+  }
+  const spotBtn = document.getElementById('modalSpotBtn');
+  if (spotBtn) {
+    spotBtn.addEventListener('click', async () => {
+      await saveMapping(spotBtn.dataset.cnpj, null);
+      showToast('Marcado como Spot. Reenvie/reescaneie o CTe para reauditar.');
+      closeCteModal();
+    });
+  }
+
+  const aprovarBtn = document.getElementById('modalAprovarBtn');
+  const reprovarBtn = document.getElementById('modalReprovarBtn');
+  if (aprovarBtn) aprovarBtn.addEventListener('click', () => submitAprovacao(r.chave_cte, 'APROVADO'));
+  if (reprovarBtn) reprovarBtn.addEventListener('click', () => submitAprovacao(r.chave_cte, 'REPROVADO'));
+
+  const vincularBtn = document.getElementById('modalVincularBtn');
+  if (vincularBtn) {
+    vincularBtn.addEventListener('click', async () => {
+      const numeroNf = (document.getElementById('modalNfIda').value || '').trim();
+      if (!numeroNf) { showToast('Digite o número da NF de origem.'); return; }
+      try {
+        const resp = await fetch('/api/audit/history/' + encodeURIComponent(r.chave_cte) + '/vincular-ida', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ numero_nf: numeroNf }),
+        });
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          showToast(err.detail || ('Erro ' + resp.status));
+          return;
+        }
+        showToast('Vinculado à NF ' + numeroNf + '.');
+        closeCteModal();
+        loadHistory();
+        loadIndicadores();
+      } catch (e) {
+        showToast('Falha ao vincular: ' + e.message);
+      }
+    });
+  }
+}
+
+async function submitAprovacao(chaveCte, decisao) {
+  const justificativa = (document.getElementById('modalJustificativa').value || '').trim();
+  if (!justificativa) { showToast('Justificativa é obrigatória.'); return; }
+  try {
+    const resp = await fetch('/api/audit/history/' + encodeURIComponent(chaveCte) + '/aprovar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decisao, justificativa }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      showToast(err.detail || ('Erro ' + resp.status));
+      return;
+    }
+    showToast(decisao === 'APROVADO' ? 'CTe aprovado.' : 'CTe reprovado.');
+    closeCteModal();
+    loadHistory();
+    loadIndicadores();
+  } catch (e) {
+    showToast('Falha ao registrar decisão: ' + e.message);
+  }
+}
+
+function renderResults(results) {
+  emptyState.style.display = 'none';
+  resultsPanel.style.display = 'block';
+  resultsBody.innerHTML = '';
+  loadHistory(); // resultados já foram persistidos no servidor — atualiza histórico e indicadores
+  loadMeses();
+  loadIndicadores();
+
+  const counts = {};
+  results.forEach(r => counts[r.status] = (counts[r.status] || 0) + 1);
+  summaryEl.innerHTML = Object.entries(counts).map(([k, v]) =>
+    `<div class="stat"><b>${v}</b>${statusLabel(k)}</div>`
+  ).join('') + `<div class="stat"><b>${results.length}</b>Total</div>`;
+
+  results.forEach((r) => {
+    const tr = document.createElement('tr');
+    const diffClass = r.diferenca > 0 ? 'diff-pos' : (r.diferenca < 0 ? 'diff-neg' : '');
+    tr.innerHTML = `
+      <td><button class="secondary" style="padding:2px 8px;" data-open-modal>+</button></td>
+      <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(r.arquivo)}">${escapeHtml(r.arquivo)}<br><span style="color:var(--muted);font-size:11px;">${r.numero_cte ? 'CTe ' + escapeHtml(r.numero_cte) : ''}</span></td>
+      <td><span class="badge" style="${tipoCteStyle(r)}">${tipoCteLabel(r)}</span></td>
+      <td>${escapeHtml(r.numero_nf || '—')}</td>
+      <td>${escapeHtml(r.transportadora_tabela || r.transportadora_nome_cte || '—')}</td>
+      <td>${escapeHtml(r.origem || '?')} → ${escapeHtml(r.destino || '?')}</td>
+      <td class="num">${fmt(r.peso_kg)}</td>
+      <td class="num">${fmt(r.valor_cobrado)}</td>
+      <td class="num">${fmt(r.valor_tabela)}</td>
+      <td class="num ${diffClass}">${r.diferenca !== null && r.diferenca !== undefined ? (r.diferenca > 0 ? '+' : '') + fmt(r.diferenca) : '—'}</td>
+      <td><span class="badge ${r.status}">${statusLabel(r.status)}</span></td>
+    `;
+    resultsBody.appendChild(tr);
+    tr.querySelector('[data-open-modal]').addEventListener('click', () => openCteModal(r.chave_cte));
+  });
+}
+
+async function saveMapping(cnpj, carrierName) {
+  await fetch('/api/carrier-mapping', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cnpj, carrier_name: carrierName }),
+  });
+}
+
+// ─── Histórico ──────────────────────────────────────────────────────────────
+
+function histFilterParams() {
+  const p = new URLSearchParams();
+  if (histMes.value) p.set('mes', histMes.value);
+  if (histTransportadora.value) p.set('transportadora', histTransportadora.value);
+  if (histStatus.value) p.set('status', histStatus.value);
+  if (histSearch.value) p.set('search', histSearch.value);
+  return p;
+}
+
+// keepPage=true preserva a página atual (navegação do pager). Sem argumento,
+// volta à 1ª página — é o que todos os gatilhos de filtro/auditoria querem.
+async function loadHistory(keepPage) {
+  if (!keepPage) histOffset = 0;
+  historyErro.style.display = 'none';
+  historyEmpty.style.display = 'none';
+  historyLoading.style.display = 'block';
+  try {
+    const params = histFilterParams();
+    params.set('limit', histLimit); params.set('offset', histOffset);
+    const [rowsResp, summaryResp] = await Promise.all([
+      fetch('/api/audit/history?' + params.toString()),
+      fetch('/api/audit/history/summary'),
+    ]);
+    if (!rowsResp.ok) throw new Error('HTTP ' + rowsResp.status);
+    const data = await rowsResp.json();
+    // Tolerante às duas formas: {total, linhas:[...]} (novo) ou lista crua [...]
+    const linhas = Array.isArray(data) ? data : (data.linhas || []);
+    histTotal = Array.isArray(data) ? data.length : (data.total != null ? data.total : linhas.length);
+    // Página além do fim (ex.: após excluir a última linha) → recua uma página.
+    if (histOffset > 0 && histOffset >= histTotal) {
+      histOffset = Math.max(0, (Math.ceil(histTotal / histLimit) - 1)) * histLimit;
+      return loadHistory(true);
+    }
+    historyLoading.style.display = 'none';
+    renderHistory(linhas);
+    renderHistSummary(await summaryResp.json());
+    Pager.render(histPager, {
+      offset: histOffset, limit: histLimit, total: histTotal, pageSizes: [50, 100, 200],
+      onGo: (novo) => { histOffset = novo; loadHistory(true); },
+      onLimit: (novo) => { histLimit = novo; histOffset = 0; loadHistory(true); },
+    });
+  } catch (e) {
+    historyLoading.style.display = 'none';
+    historyBody.innerHTML = ''; histPager.innerHTML = '';
+    historyErro.style.display = 'block';
+  }
+}
+
+function renderHistSummary(monthRows) {
+  if (!monthRows.length) { histSummaryEl.innerHTML = ''; return; }
+  histSummaryEl.innerHTML = monthRows.slice(0, 6).map(m => `
+    <div class="stat">
+      <b>${m.total}</b>${escapeHtml(m.mes_referencia || '—')} · ${m.divergentes || 0} diverg. · R$ ${fmt(m.valor_divergente_total || 0)} em divergências
+    </div>
+  `).join('');
+}
+
+function buildHistoryRow(r) {
+  const tr = document.createElement('tr');
+  const diffClass = r.diferenca > 0 ? 'diff-pos' : (r.diferenca < 0 ? 'diff-neg' : '');
+  const dataFmt = r.data_emissao ? r.data_emissao.slice(0, 10).split('-').reverse().join('/') : '—';
+  const aprovTxt = r.aprovacao_status === 'APROVADO_MANUAL' || r.aprovacao_status === 'REPROVADO_MANUAL'
+    ? aprovLabel(r.aprovacao_status) + (r.aprovado_por ? ' — ' + escapeHtml(r.aprovado_por) : '')
+    : aprovLabel(r.aprovacao_status);
+  tr.innerHTML = `
+    <td><button class="secondary" style="padding:2px 8px;" data-open-modal>+</button></td>
+    <td>${dataFmt}</td>
+    <td style="max-width:130px;"><div style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--muted);" title="${escapeHtml(r.arquivo || '')}">${escapeHtml(r.arquivo || '')}</div>${r.numero_cte ? 'CTe ' + escapeHtml(r.numero_cte) + ' <a href="/tracking?search=' + encodeURIComponent(r.numero_cte) + '" title="Ver esta entrega na Torre de Controle" style="color:var(--accent);text-decoration:none;">🗼</a>' : ''}</td>
+    <td><span class="badge" style="${tipoCteStyle(r)}">${tipoCteLabel(r)}</span></td>
+    <td>${escapeHtml(r.numero_nf || '—')}</td>
+    <td>${escapeHtml(r.transportadora_tabela || r.transportadora_nome_cte || '—')}</td>
+    <td>${escapeHtml(r.origem || '?')} → ${escapeHtml(r.destino || '?')}</td>
+    <td class="num">${fmt(r.valor_cobrado)}</td>
+    <td class="num">${fmt(r.valor_tabela)}</td>
+    <td class="num ${diffClass}">${r.diferenca !== null && r.diferenca !== undefined ? (r.diferenca > 0 ? '+' : '') + fmt(r.diferenca) : '—'}</td>
+    <td><span class="badge ${r.status}">${statusLabel(r.status)}</span></td>
+    <td><span class="badge aprov-${r.aprovacao_status || 'PENDENTE'}" title="${escapeHtml(r.justificativa || '')}">${escapeHtml(aprovTxt)}</span></td>
+    <td><input type="text" value="${escapeHtml(r.observacoes_auditor || '')}" data-notes="${escapeHtml(r.chave_cte)}" placeholder="anotar para próxima auditoria…" style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:4px; padding:5px 7px; font-size:12px;" /></td>
+    <td><button type="button" class="secondary" data-del="${escapeHtml(r.chave_cte)}" aria-label="Remover CTe ${escapeHtml(r.numero_cte || r.chave_cte)} da auditoria" title="Remover da auditoria" style="padding:4px 8px;">✕</button></td>
+  `;
+  tr.querySelector('[data-open-modal]').addEventListener('click', () => openCteModal(r.chave_cte));
+
+  const notesInput = tr.querySelector('[data-notes]');
+  let saveTimer = null;
+  notesInput.addEventListener('input', () => {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => saveHistoryNote(r.chave_cte, notesInput.value), 600);
+  });
+  notesInput.addEventListener('blur', () => {
+    clearTimeout(saveTimer);
+    saveHistoryNote(r.chave_cte, notesInput.value);
+  });
+
+  tr.querySelector('[data-del]').addEventListener('click', async () => {
+    if (!confirm('Remover este registro do histórico?')) return;
+    await fetch('/api/audit/history/' + encodeURIComponent(r.chave_cte), { method: 'DELETE' });
+    loadHistory();
+  });
+  return tr;
+}
+
+const HISTORY_COLSPAN = 14;
+
+function renderHistory(rows) {
+  historyBody.innerHTML = '';
+  historyEmpty.style.display = rows.length ? 'none' : 'block';
+
+  // Já resolvido (aprovado automático OU manual) não precisa ficar ocupando
+  // tela — agrupa numa linha só (expansível). Pendente e reprovado continuam
+  // sempre visíveis, é o que ainda precisa de atenção.
+  const resolvidos = rows.filter(r => r.aprovacao_status === 'AUTOMATICA' || r.aprovacao_status === 'APROVADO_MANUAL');
+  const resto = rows.filter(r => !(r.aprovacao_status === 'AUTOMATICA' || r.aprovacao_status === 'APROVADO_MANUAL'));
+
+  resto.forEach(r => historyBody.appendChild(buildHistoryRow(r)));
+
+  if (resolvidos.length) {
+    const totalCobrado = resolvidos.reduce((s, r) => s + (r.valor_cobrado || 0), 0);
+    const nAuto = resolvidos.filter(r => r.aprovacao_status === 'AUTOMATICA').length;
+    const nManual = resolvidos.length - nAuto;
+    const groupTr = document.createElement('tr');
+    groupTr.className = 'auto-ok-toggle';
+    groupTr.style.cursor = 'pointer';
+    groupTr.style.background = 'rgba(255,255,255,.03)';
+    groupTr.innerHTML = `
+      <td colspan="${HISTORY_COLSPAN}" style="padding:10px 12px;color:var(--muted);">
+        <span data-arrow>▸</span>
+        &nbsp;<b style="color:var(--text);">${resolvidos.length}</b> auditoria${resolvidos.length > 1 ? 's' : ''} já aprovada${resolvidos.length > 1 ? 's' : ''}
+        (${nAuto} automática${nAuto === 1 ? '' : 's'}${nManual ? ', ' + nManual + ' manual' + (nManual === 1 ? '' : 'mente') : ''})
+        · R$ ${fmt(totalCobrado)} cobrado no total — clique para expandir
+      </td>
+    `;
+    historyBody.appendChild(groupTr);
+
+    const autoRows = resolvidos.map(r => {
+      const tr = buildHistoryRow(r);
+      tr.hidden = true;
+      tr.classList.add('auto-ok-row');
+      historyBody.appendChild(tr);
+      return tr;
+    });
+
+    let expanded = false;
+    groupTr.addEventListener('click', () => {
+      expanded = !expanded;
+      autoRows.forEach(tr => { tr.hidden = !expanded; });
+      groupTr.querySelector('[data-arrow]').textContent = expanded ? '▾' : '▸';
+    });
+  }
+}
+
+async function saveHistoryNote(chave, observacoes) {
+  try {
+    await fetch('/api/audit/history/' + encodeURIComponent(chave), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ observacoes }),
+    });
+    showToast('Observação salva.');
+  } catch (e) {
+    showToast('Falha ao salvar observação: ' + e.message);
+  }
+}
+
+histFilterBtn.addEventListener('click', () => { loadHistory(); loadIndicadores(); });
+document.getElementById('histRetryBtn').addEventListener('click', () => loadHistory(true));
+histExportBtn.addEventListener('click', () => {
+  const params = histFilterParams();
+  window.location.href = '/api/audit/history/export.xlsx?' + params.toString();
+  showToast('Gerando relatório… o download deve começar em instantes (confira a pasta Downloads).');
+});
+histExportCsvBtn.addEventListener('click', () => {
+  const params = histFilterParams();
+  window.location.href = '/api/audit/history/export?' + params.toString();
+  showToast('Gerando CSV… confira a pasta Downloads.');
+});
+
+// ─── Indicadores (BI) ─────────────────────────────────────────────────────
+
+function vizShowTooltip(evt, html) {
+  vizTooltip.innerHTML = html;
+  vizTooltip.style.display = 'block';
+  vizTooltip.style.left = (evt.clientX + 14) + 'px';
+  vizTooltip.style.top = (evt.clientY + 14) + 'px';
+}
+function vizHideTooltip() {
+  vizTooltip.style.display = 'none';
+}
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+// barra vertical ancorada na baseline — cantos arredondados só no topo (data-end)
+function roundedTopBarPath(x, yTop, yBase, w, r) {
+  r = Math.max(0, Math.min(r, w / 2, yBase - yTop));
+  if (r <= 0.01) return `M${x},${yBase} L${x},${yTop} L${x + w},${yTop} L${x + w},${yBase} Z`;
+  return `M${x},${yBase} L${x},${yTop + r} Q${x},${yTop} ${x + r},${yTop} L${x + w - r},${yTop} Q${x + w},${yTop} ${x + w},${yTop + r} L${x + w},${yBase} Z`;
+}
+
+// barra horizontal ancorada à esquerda — cantos arredondados só na ponta (data-end)
+function roundedEndBarPath(xBase, xEnd, y, h, r) {
+  r = Math.max(0, Math.min(r, h / 2, xEnd - xBase));
+  if (r <= 0.01) return `M${xBase},${y} L${xEnd},${y} L${xEnd},${y + h} L${xBase},${y + h} Z`;
+  return `M${xBase},${y} L${xEnd - r},${y} Q${xEnd},${y} ${xEnd},${y + r} L${xEnd},${y + h - r} Q${xEnd},${y + h} ${xEnd - r},${y + h} L${xBase},${y + h} Z`;
+}
+
+function renderKpiTiles(kpis) {
+  const cur = histStatus.value;
+  // filtro: '' => card "ver todos" (limpa a situação); 'OK'/'DIVERGENTE'/'OUTROS' => cruza o painel
+  // por aquela situação; ausente => card só informativo (não clicável).
+  const tiles = [
+    { label: 'Total de CTEs', value: kpis.total_ctes, filtro: '' },
+    { label: 'CTEs OK', value: kpis.ctes_ok, sub: kpis.total_ctes ? Math.round(kpis.ctes_ok / kpis.total_ctes * 100) + '%' : '', accent: 'good', filtro: 'OK' },
+    { label: 'CTEs divergentes', value: kpis.ctes_divergente, sub: kpis.pct_divergente + '%', accent: 'critical', filtro: 'DIVERGENTE' },
+    { label: 'CTEs outros', value: kpis.ctes_outros, sub: 'spot / sem tabela / não mapeada', filtro: 'OUTROS' },
+    { label: 'Valor cobrado (total)', value: 'R$ ' + fmt(kpis.valor_cobrado_total) },
+    { label: 'Valor tabela (total)', value: 'R$ ' + fmt(kpis.valor_tabela_total) },
+    { label: 'Valor em divergência', value: 'R$ ' + fmt(kpis.valor_divergencia_total), accent: 'critical', filtro: 'DIVERGENTE' },
+  ];
+  bizKpiRow.innerHTML = tiles.map((t, i) => {
+    const clic = t.filtro !== undefined;
+    const sel = clic && cur !== '' && cur === t.filtro;
+    const titulo = !clic ? '' : sel ? 'Clique para remover o filtro'
+      : (t.filtro ? 'Clique para filtrar o painel por ' + t.label : 'Clique para ver todos (remover a situação)');
+    return `
+    <div class="kpi-tile ${t.accent ? 'accent-' + t.accent : ''}${clic ? ' clic' : ''}${sel ? ' sel' : ''}"${clic ? ` data-kpi="${i}"` : ''}${titulo ? ` title="${escapeHtml(titulo)}"` : ''}>
+      <div class="kpi-label">${escapeHtml(t.label)}</div>
+      <div class="kpi-value">${escapeHtml(String(t.value))}</div>
+      ${t.sub ? `<div class="kpi-sub">${escapeHtml(t.sub)}</div>` : ''}
+    </div>`;
+  }).join('');
+  bizKpiRow.querySelectorAll('[data-kpi]').forEach(elm => {
+    elm.addEventListener('click', () => toggleStatusFilter(tiles[+elm.dataset.kpi].filtro));
+  });
+}
+
+// Card KPI como filtro cruzado (toggle liga/desliga por situação), preservando os
+// filtros de mês/transportadora já ativos.
+const _KPI_STATUS_LABEL = { OK: 'OK', DIVERGENTE: 'Divergente', OUTROS: 'Outros (spot/sem tabela)' };
+function toggleStatusFilter(status) {
+  const novo = (histStatus.value === status) ? '' : status;
+  histStatus.value = novo;
+  loadHistory();
+  loadIndicadores();
+  if (novo) {
+    bizActiveFilter.innerHTML = `<span class="viz-active-chip">Situação: ${escapeHtml(_KPI_STATUS_LABEL[novo] || novo)} <button type="button" id="bizActiveFilterClear" aria-label="Limpar filtro de situação" title="Limpar">✕</button></span>`;
+    document.getElementById('bizActiveFilterClear').addEventListener('click', clearAllFilters);
+  } else {
+    bizActiveFilter.innerHTML = '';
+  }
+}
+
+function renderCtesPorMesChart(porMes) {
+  const container = document.getElementById('chartCtesPorMes');
+  container.innerHTML = '';
+  if (!porMes.length) { container.innerHTML = '<div class="empty" style="padding:30px 0;">Sem dados.</div>'; return; }
+
+  const W = 560, H = 220, padL = 30, padR = 10, padT = 14, padB = 26;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const maxTotal = Math.max(1, ...porMes.map(m => m.total));
+  const n = porMes.length;
+  const gap = 14;
+  const barW = Math.min(52, (plotW - gap * (n - 1)) / n);
+  const usedW = barW * n + gap * (n - 1);
+  const offsetX = padL + (plotW - usedW) / 2;
+  const GAP_SEG = 2;
+
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', height: H });
+
+  const ticks = 4;
+  for (let i = 0; i <= ticks; i++) {
+    const y = padT + plotH - (plotH * i / ticks);
+    svg.appendChild(svgEl('line', { x1: padL, x2: W - padR, y1: y, y2: y, stroke: 'var(--viz-grid)', 'stroke-width': 1 }));
+    const t = svgEl('text', { x: padL - 6, y: y + 3, 'text-anchor': 'end', 'font-size': 9, fill: 'var(--viz-muted)' });
+    t.textContent = Math.round(maxTotal * i / ticks);
+    svg.appendChild(t);
+  }
+  svg.appendChild(svgEl('line', { x1: padL, x2: W - padR, y1: padT + plotH, y2: padT + plotH, stroke: 'var(--viz-baseline)', 'stroke-width': 1 }));
+
+  porMes.forEach((m, i) => {
+    const x = offsetX + i * (barW + gap);
+    const segs = [
+      { val: m.ok, color: 'var(--viz-good)', label: 'OK', status: 'OK' },
+      { val: m.divergente, color: 'var(--viz-critical)', label: 'Divergente', status: 'DIVERGENTE' },
+      { val: m.outros, color: 'var(--viz-warning)', label: 'Outros', status: 'OUTROS' },
+    ];
+    let yCursor = padT + plotH;
+    segs.forEach((seg, si) => {
+      if (seg.val <= 0) return;
+      const segH = (seg.val / maxTotal) * plotH;
+      const yTop = yCursor - segH;
+      const isTopmost = segs.slice(si + 1).every(s => s.val <= 0);
+      const d = isTopmost
+        ? roundedTopBarPath(x, yTop, yCursor, barW, 4)
+        : `M${x},${yCursor} L${x},${yTop} L${x + barW},${yTop} L${x + barW},${yCursor} Z`;
+      const path = svgEl('path', { d, fill: seg.color, class: 'viz-bar' });
+      path.addEventListener('mousemove', e => vizShowTooltip(e, `<b>${escapeHtml(m.mes)}</b><br>${seg.label}: ${seg.val} (clique para filtrar)`));
+      path.addEventListener('mouseleave', vizHideTooltip);
+      path.addEventListener('click', () => applyDrilldownFilter({ mes: m.mes, status: seg.status }, `${m.mes} · ${seg.label}`));
+      svg.appendChild(path);
+      yCursor = yTop - GAP_SEG;
+    });
+    const totalTop = padT + plotH - (m.total / maxTotal) * plotH;
+    const lbl = svgEl('text', { x: x + barW / 2, y: totalTop - 6, 'text-anchor': 'middle', 'font-size': 10, fill: 'var(--viz-ink)', 'font-weight': 600 });
+    lbl.textContent = m.total;
+    svg.appendChild(lbl);
+    const mlbl = svgEl('text', { x: x + barW / 2, y: H - 8, 'text-anchor': 'middle', 'font-size': 10, fill: 'var(--viz-muted)' });
+    mlbl.textContent = m.mes;
+    svg.appendChild(mlbl);
+  });
+
+  container.appendChild(svg);
+  container.insertAdjacentHTML('beforeend', `
+    <div class="chart-legend">
+      <span class="lg-item"><span class="lg-swatch" style="background:var(--viz-good)"></span>OK</span>
+      <span class="lg-item"><span class="lg-swatch" style="background:var(--viz-critical)"></span>Divergente</span>
+      <span class="lg-item"><span class="lg-swatch" style="background:var(--viz-warning)"></span>Outros (spot, não mapeada, sem tabela…)</span>
+    </div>
+  `);
+}
+
+function renderValoresPorMesChart(porMes) {
+  const container = document.getElementById('chartValoresPorMes');
+  container.innerHTML = '';
+  if (!porMes.length) { container.innerHTML = '<div class="empty" style="padding:30px 0;">Sem dados.</div>'; return; }
+
+  const W = 560, H = 220, padL = 46, padR = 10, padT = 14, padB = 26;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const maxVal = Math.max(1, ...porMes.map(m => Math.max(m.valor_cobrado, m.valor_tabela)));
+  const n = porMes.length;
+  const groupGap = 18;
+  const groupW = (plotW - groupGap * (n - 1)) / n;
+  const barW = Math.min(24, (groupW - 4) / 2);
+  const barGap = 4;
+  const usedW = groupW * n + groupGap * (n - 1);
+  const offsetX = padL + (plotW - usedW) / 2;
+
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', height: H });
+
+  const ticks = 4;
+  for (let i = 0; i <= ticks; i++) {
+    const y = padT + plotH - (plotH * i / ticks);
+    svg.appendChild(svgEl('line', { x1: padL, x2: W - padR, y1: y, y2: y, stroke: 'var(--viz-grid)', 'stroke-width': 1 }));
+    const t = svgEl('text', { x: padL - 6, y: y + 3, 'text-anchor': 'end', 'font-size': 9, fill: 'var(--viz-muted)' });
+    t.textContent = fmt(maxVal * i / ticks);
+    svg.appendChild(t);
+  }
+  svg.appendChild(svgEl('line', { x1: padL, x2: W - padR, y1: padT + plotH, y2: padT + plotH, stroke: 'var(--viz-baseline)', 'stroke-width': 1 }));
+
+  porMes.forEach((m, i) => {
+    const gx = offsetX + i * (groupW + groupGap);
+    const bars = [
+      { val: m.valor_cobrado, color: 'var(--viz-violet)', label: 'Cobrado' },
+      { val: m.valor_tabela, color: 'var(--viz-blue)', label: 'Tabela' },
+    ];
+    bars.forEach((b, bi) => {
+      const x = gx + bi * (barW + barGap);
+      const h = (b.val / maxVal) * plotH;
+      const yTop = padT + plotH - h;
+      const path = svgEl('path', { d: roundedTopBarPath(x, yTop, padT + plotH, barW, 3), fill: b.color, class: 'viz-bar' });
+      path.addEventListener('mousemove', e => vizShowTooltip(e, `<b>${escapeHtml(m.mes)}</b><br>${b.label}: R$ ${fmt(b.val)} (clique para filtrar)`));
+      path.addEventListener('mouseleave', vizHideTooltip);
+      path.addEventListener('click', () => applyDrilldownFilter({ mes: m.mes }, m.mes));
+      svg.appendChild(path);
+    });
+    const mlbl = svgEl('text', { x: gx + groupW / 2, y: H - 8, 'text-anchor': 'middle', 'font-size': 10, fill: 'var(--viz-muted)' });
+    mlbl.textContent = m.mes;
+    svg.appendChild(mlbl);
+  });
+
+  container.appendChild(svg);
+  container.insertAdjacentHTML('beforeend', `
+    <div class="chart-legend">
+      <span class="lg-item"><span class="lg-swatch" style="background:var(--viz-violet)"></span>Valor cobrado</span>
+      <span class="lg-item"><span class="lg-swatch" style="background:var(--viz-blue)"></span>Valor tabela</span>
+    </div>
+  `);
+}
+
+function renderDivergenciaTranspChart(porTransportadora) {
+  const container = document.getElementById('chartDivergenciaTransp');
+  container.innerHTML = '';
+  const withDiverg = porTransportadora.filter(t => t.valor_divergencia > 0);
+  const data = withDiverg.slice(0, 8);
+  if (!data.length) {
+    container.innerHTML = '<div class="empty" style="padding:20px 0;">Nenhuma divergência registrada para os filtros selecionados.</div>';
+    return;
+  }
+
+  const rowH = 30, padL = 140, padR = 80, padT = 6, padB = 6;
+  const W = 900;
+  const H = data.length * rowH + padT + padB;
+  const plotW = W - padL - padR;
+  const maxVal = Math.max(1, ...data.map(t => t.valor_divergencia));
+
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', height: H });
+
+  data.forEach((t, i) => {
+    const y = padT + i * rowH;
+    const barH = 18;
+    const w = (t.valor_divergencia / maxVal) * plotW;
+    const nameLbl = svgEl('text', { x: padL - 10, y: y + barH / 2 + 4, 'text-anchor': 'end', 'font-size': 11, fill: 'var(--viz-ink)' });
+    nameLbl.textContent = t.transportadora;
+    svg.appendChild(nameLbl);
+    const path = svgEl('path', { d: roundedEndBarPath(padL, padL + w, y, barH, 3), fill: 'var(--viz-critical)', class: 'viz-bar' });
+    path.addEventListener('mousemove', e => vizShowTooltip(e,
+      `<b>${escapeHtml(t.transportadora)}</b><br>Divergência: R$ ${fmt(t.valor_divergencia)}<br>${t.divergente} de ${t.total} CTEs (clique para filtrar)`));
+    path.addEventListener('mouseleave', vizHideTooltip);
+    path.addEventListener('click', () => applyDrilldownFilter({ transportadora: t.transportadora, status: 'DIVERGENTE' }, `${t.transportadora} · Divergente`));
+    svg.appendChild(path);
+    const valLbl = svgEl('text', { x: padL + w + 8, y: y + barH / 2 + 4, 'font-size': 11, fill: 'var(--viz-muted)' });
+    valLbl.textContent = 'R$ ' + fmt(t.valor_divergencia);
+    svg.appendChild(valLbl);
+  });
+
+  container.appendChild(svg);
+  if (withDiverg.length > 8) {
+    container.insertAdjacentHTML('beforeend', `<div style="font-size:11px;color:var(--muted);margin-top:6px;">Mostrando as 8 transportadoras com maior divergência (de ${withDiverg.length}).</div>`);
+  }
+}
+
+function bizFilterParams() {
+  const p = new URLSearchParams();
+  if (bizMes.value) p.set('mes', bizMes.value);
+  if (bizTransportadora.value) p.set('transportadora', bizTransportadora.value);
+  if (histStatus.value) p.set('status', histStatus.value);
+  return p;
+}
+
+async function loadIndicadores() {
+  try {
+    const params = bizFilterParams();
+    const resp = await fetch('/api/audit/indicadores?' + params.toString());
+    const data = await resp.json();
+    bizEmpty.style.display = data.kpis.total_ctes ? 'none' : 'block';
+    renderKpiTiles(data.kpis);
+    renderCtesPorMesChart(data.por_mes);
+    renderValoresPorMesChart(data.por_mes);
+    renderDivergenciaTranspChart(data.por_transportadora);
+  } catch (e) {
+    showToast('Falha ao carregar indicadores: ' + e.message);
+  }
+}
+
+bizMes.addEventListener('change', loadIndicadores);
+bizTransportadora.addEventListener('change', loadIndicadores);
+
+function applyDrilldownFilter(filters, labelText) {
+  if ('mes' in filters) { histMes.value = filters.mes || ''; bizMes.value = filters.mes || ''; }
+  if ('transportadora' in filters) { histTransportadora.value = filters.transportadora || ''; bizTransportadora.value = filters.transportadora || ''; }
+  if ('status' in filters) { histStatus.value = filters.status || ''; }
+
+  loadHistory();
+  loadIndicadores();
+
+  bizActiveFilter.innerHTML = `<span class="viz-active-chip">Filtro ativo: ${escapeHtml(labelText)} <button type="button" id="bizActiveFilterClear" aria-label="Limpar filtro ativo" title="Limpar">✕</button></span>`;
+  document.getElementById('bizActiveFilterClear').addEventListener('click', clearAllFilters);
+
+  const historyPanelHeading = Array.from(document.querySelectorAll('.panel h2')).find(h => h.textContent.includes('Histórico'));
+  if (historyPanelHeading) historyPanelHeading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  showToast(`Filtro aplicado: ${labelText}. Role para cima para ver o histórico e os indicadores atualizados.`);
+}
+
+function clearAllFilters() {
+  histMes.value = '';
+  histTransportadora.value = '';
+  histStatus.value = '';
+  histSearch.value = '';
+  bizMes.value = '';
+  bizTransportadora.value = '';
+  bizActiveFilter.innerHTML = '';
+  loadHistory();
+  loadIndicadores();
+}
+
+bizClearBtn.addEventListener('click', clearAllFilters);
+
+// Interligação com a Torre de Controle: /audit?search=XXX pré-filtra o histórico
+const _urlParams = new URLSearchParams(window.location.search);
+if (_urlParams.get('search')) histSearch.value = _urlParams.get('search');
+
+loadCarrierList();
+loadHistory();
+loadMeses();
+loadIndicadores();
+loadCurrentUser();
+</script>
+
+<script src="/static/auth.js" defer></script>
+</body>
+</html>

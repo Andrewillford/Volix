@@ -1,0 +1,639 @@
+{
+  "_ajuda": {
+    "descricao": "Tabela OFICIAL de codigos de ocorrencia EDI OCOREN (PROCEDA 5.0 - TIVIT). Chave = codigo normalizado (sem zeros a esquerda, min 2 digitos: 001->01, 098->98, 100->100). Editavel: adicione codigos proprios de transportadora aqui. Apos editar, use 'Recarregar codigos' no painel.",
+    "categorias_validas": [
+      "ENTREGUE - finaliza a entrega e grava a data real (base do OTD)",
+      "EM_TRANSITO - informativa, mercadoria segue em fluxo normal",
+      "TENTATIVA_FRUSTRADA - houve tentativa mas nao entregou (recusa, fechado, ausente...)",
+      "DEVOLUCAO - mercadoria em devolucao ao remetente",
+      "SINISTRO - extravio, avaria, roubo, falta",
+      "OUTROS - sem classificacao (padrao para codigo desconhecido)"
+    ]
+  },
+  "codigos": {
+    "00": {
+      "descricao": "Processo de transporte ja iniciado",
+      "categoria": "EM_TRANSITO"
+    },
+    "01": {
+      "descricao": "Entrega realizada normalmente",
+      "categoria": "ENTREGUE"
+    },
+    "02": {
+      "descricao": "Entrega fora da data programada",
+      "categoria": "ENTREGUE"
+    },
+    "03": {
+      "descricao": "Recusa por falta de pedido de compra",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "04": {
+      "descricao": "Recusa por pedido de compra cancelado",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "05": {
+      "descricao": "Falta de espaco fisico no deposito do cliente destino",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "06": {
+      "descricao": "Endereco do cliente destino nao localizado",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "07": {
+      "descricao": "Devolucao nao autorizada pelo cliente",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "08": {
+      "descricao": "Preco da mercadoria em desacordo com o pedido de compra",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "09": {
+      "descricao": "Mercadoria em desacordo com o pedido de compra",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "10": {
+      "descricao": "Cliente destino so recebe mercadoria com frete pago",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "11": {
+      "descricao": "Recusa por deficiencia na embalagem da mercadoria",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "12": {
+      "descricao": "Redespacho nao indicado",
+      "categoria": "OUTROS"
+    },
+    "13": {
+      "descricao": "Transportadora nao atende a cidade do cliente destino",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "14": {
+      "descricao": "Mercadoria sinistrada",
+      "categoria": "SINISTRO"
+    },
+    "15": {
+      "descricao": "Embalagem sinistrada",
+      "categoria": "SINISTRO"
+    },
+    "16": {
+      "descricao": "Pedido de compras em duplicidade",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "17": {
+      "descricao": "Mercadoria fora da embalagem de atacadista",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "18": {
+      "descricao": "Mercadorias trocadas",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "19": {
+      "descricao": "Reentrega solicitada pelo cliente",
+      "categoria": "EM_TRANSITO"
+    },
+    "20": {
+      "descricao": "Entrega prejudicada por horario / falta de tempo habil",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "21": {
+      "descricao": "Estabelecimento fechado",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "22": {
+      "descricao": "Reentrega sem cobranca do cliente",
+      "categoria": "EM_TRANSITO"
+    },
+    "23": {
+      "descricao": "Extravio de mercadoria em transito",
+      "categoria": "SINISTRO"
+    },
+    "24": {
+      "descricao": "Mercadoria reentregue ao cliente destino",
+      "categoria": "ENTREGUE"
+    },
+    "25": {
+      "descricao": "Mercadoria devolvida ao cliente de origem",
+      "categoria": "DEVOLUCAO"
+    },
+    "26": {
+      "descricao": "Nota fiscal retida pela fiscalizacao",
+      "categoria": "OUTROS"
+    },
+    "27": {
+      "descricao": "Roubo de carga",
+      "categoria": "SINISTRO"
+    },
+    "28": {
+      "descricao": "Mercadoria retida ate segunda ordem",
+      "categoria": "EM_TRANSITO"
+    },
+    "29": {
+      "descricao": "Cliente retira mercadoria na transportadora",
+      "categoria": "EM_TRANSITO"
+    },
+    "30": {
+      "descricao": "Problema com a documentacao (nota fiscal e/ou CTRC)",
+      "categoria": "OUTROS"
+    },
+    "31": {
+      "descricao": "Entrega com indenizacao efetuada",
+      "categoria": "ENTREGUE"
+    },
+    "32": {
+      "descricao": "Falta com solicitacao de reposicao",
+      "categoria": "SINISTRO"
+    },
+    "33": {
+      "descricao": "Falta com busca/reconferencia",
+      "categoria": "SINISTRO"
+    },
+    "34": {
+      "descricao": "Cliente fechado para balanco",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "35": {
+      "descricao": "Quantidade de produto em desacordo (NF e/ou pedido)",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "36": {
+      "descricao": "Extravio de documentos pela Cia. Aerea",
+      "categoria": "OUTROS"
+    },
+    "37": {
+      "descricao": "Extravio de carga pela Cia. Aerea",
+      "categoria": "SINISTRO"
+    },
+    "38": {
+      "descricao": "Corte de carga na pista - Cod. Aereo",
+      "categoria": "OUTROS"
+    },
+    "39": {
+      "descricao": "Corte de carga na pista - Cod. Aereo",
+      "categoria": "OUTROS"
+    },
+    "40": {
+      "descricao": "Aeroporto fechado na origem - Cod. Aereo",
+      "categoria": "OUTROS"
+    },
+    "41": {
+      "descricao": "Pedido de compra incompleto",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "42": {
+      "descricao": "Nota fiscal com produtos de setores diferentes",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "43": {
+      "descricao": "Feriado local/nacional",
+      "categoria": "EM_TRANSITO"
+    },
+    "44": {
+      "descricao": "Excesso de veiculos",
+      "categoria": "EM_TRANSITO"
+    },
+    "45": {
+      "descricao": "Cliente destino encerrou atividades",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "46": {
+      "descricao": "Responsavel de recebimento ausente",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "47": {
+      "descricao": "Cliente destino em greve",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "48": {
+      "descricao": "Aeroporto fechado no destino - Cod. Aereo",
+      "categoria": "EM_TRANSITO"
+    },
+    "49": {
+      "descricao": "Voo cancelado - Cod. Transp. Aereo",
+      "categoria": "EM_TRANSITO"
+    },
+    "50": {
+      "descricao": "Greve nacional (greve geral)",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "51": {
+      "descricao": "Mercadoria vencida (data de validade expirada)",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "52": {
+      "descricao": "Mercadoria redespachada (entregue para redespacho)",
+      "categoria": "EM_TRANSITO"
+    },
+    "53": {
+      "descricao": "Mercadoria nao foi embarcada, permanecendo na origem",
+      "categoria": "OUTROS"
+    },
+    "54": {
+      "descricao": "Mercadoria embarcada sem CTRC ou CTRC nao embarcado",
+      "categoria": "OUTROS"
+    },
+    "55": {
+      "descricao": "Endereco transp. de redespacho nao localizado/nao informado",
+      "categoria": "OUTROS"
+    },
+    "56": {
+      "descricao": "Cliente nao aceita mercadoria com pagamento de reembolso",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "57": {
+      "descricao": "Transp. nao atende a cidade da transportadora de redespacho",
+      "categoria": "OUTROS"
+    },
+    "58": {
+      "descricao": "Quebra do veiculo de entrega",
+      "categoria": "EM_TRANSITO"
+    },
+    "59": {
+      "descricao": "Cliente sem verba para pagar o frete",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "60": {
+      "descricao": "Endereco de entrega errado",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "61": {
+      "descricao": "Cliente sem verba para reembolso",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "62": {
+      "descricao": "Recusa da carga por valor de frete errado",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "63": {
+      "descricao": "Identificacao do cliente nao informada/insuficiente",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "64": {
+      "descricao": "Cliente nao identificado/cadastrado",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "65": {
+      "descricao": "Entrar em contato com o comprador",
+      "categoria": "OUTROS"
+    },
+    "66": {
+      "descricao": "Troca nao disponivel",
+      "categoria": "OUTROS"
+    },
+    "67": {
+      "descricao": "Fins estatisticos",
+      "categoria": "OUTROS"
+    },
+    "68": {
+      "descricao": "Data de entrega diferente do pedido",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "69": {
+      "descricao": "Substituicao tributaria",
+      "categoria": "OUTROS"
+    },
+    "70": {
+      "descricao": "Sistema fora do ar",
+      "categoria": "OUTROS"
+    },
+    "71": {
+      "descricao": "Cliente destino nao recebe pedido parcial",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "72": {
+      "descricao": "Cliente destino so recebe pedido parcial",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "73": {
+      "descricao": "Redespacho somente com frete pago",
+      "categoria": "OUTROS"
+    },
+    "74": {
+      "descricao": "Funcionario nao autorizado a receber mercadorias",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "75": {
+      "descricao": "Mercadoria embarcada para rota indevida",
+      "categoria": "OUTROS"
+    },
+    "76": {
+      "descricao": "Estrada/entrada de acesso interditada",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "77": {
+      "descricao": "Cliente destino mudou de endereco",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "78": {
+      "descricao": "Avaria total",
+      "categoria": "SINISTRO"
+    },
+    "79": {
+      "descricao": "Avaria parcial",
+      "categoria": "SINISTRO"
+    },
+    "80": {
+      "descricao": "Extravio total",
+      "categoria": "SINISTRO"
+    },
+    "81": {
+      "descricao": "Extravio parcial",
+      "categoria": "SINISTRO"
+    },
+    "82": {
+      "descricao": "Sobra de mercadoria sem nota fiscal",
+      "categoria": "SINISTRO"
+    },
+    "83": {
+      "descricao": "Mercadoria em poder da SUFRAMA para internacao",
+      "categoria": "OUTROS"
+    },
+    "84": {
+      "descricao": "Mercadoria retirada para conferencia",
+      "categoria": "OUTROS"
+    },
+    "85": {
+      "descricao": "Apreensao fiscal da mercadoria",
+      "categoria": "OUTROS"
+    },
+    "86": {
+      "descricao": "Excesso de carga/peso",
+      "categoria": "SINISTRO"
+    },
+    "87": {
+      "descricao": "Ferias coletivas",
+      "categoria": "EM_TRANSITO"
+    },
+    "88": {
+      "descricao": "Recusado, aguardando negociacao",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "89": {
+      "descricao": "Aguardando refaturamento das mercadorias",
+      "categoria": "OUTROS"
+    },
+    "90": {
+      "descricao": "Recusado pelo redespachante",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "91": {
+      "descricao": "Entrega programada",
+      "categoria": "EM_TRANSITO"
+    },
+    "92": {
+      "descricao": "Problemas fiscais",
+      "categoria": "OUTROS"
+    },
+    "93": {
+      "descricao": "Aguardando carta de correcao",
+      "categoria": "OUTROS"
+    },
+    "94": {
+      "descricao": "Recusa por divergencia nas condicoes de pagamento",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "95": {
+      "descricao": "Carga aguardando voo conexao - Cod. Transp. Aereo",
+      "categoria": "EM_TRANSITO"
+    },
+    "96": {
+      "descricao": "Carga sem embalagem propria para transp. Aereo",
+      "categoria": "OUTROS"
+    },
+    "97": {
+      "descricao": "Carga com dimensao superior ao porao da aeronave",
+      "categoria": "OUTROS"
+    },
+    "98": {
+      "descricao": "Chegada na cidade ou filial de destino",
+      "categoria": "EM_TRANSITO"
+    },
+    "99": {
+      "descricao": "Outros tipos de ocorrencias nao especificados",
+      "categoria": "OUTROS"
+    },
+    "100": {
+      "descricao": "Devolucao por nao cumprimento do agendamento",
+      "categoria": "DEVOLUCAO"
+    },
+    "101": {
+      "descricao": "Devolucao/nao entrega a pedido do embarcador",
+      "categoria": "DEVOLUCAO"
+    },
+    "102": {
+      "descricao": "Devolucao/nao entrega a pedido do destinatario",
+      "categoria": "DEVOLUCAO"
+    },
+    "103": {
+      "descricao": "Devolucao/nao entrega a pedido transportadora de redespacho",
+      "categoria": "DEVOLUCAO"
+    },
+    "104": {
+      "descricao": "Entrega efetuada na transportadora de redespacho",
+      "categoria": "EM_TRANSITO"
+    },
+    "105": {
+      "descricao": "Entrega efetuada no cliente pela transportadora de redespacho",
+      "categoria": "ENTREGUE"
+    },
+    "201": {
+      "descricao": "Data da retirada em Manaus",
+      "categoria": "EM_TRANSITO"
+    },
+    "202": {
+      "descricao": "Placa da carreta responsavel pelo transporte",
+      "categoria": "EM_TRANSITO"
+    },
+    "203": {
+      "descricao": "Nome da balsa",
+      "categoria": "EM_TRANSITO"
+    },
+    "204": {
+      "descricao": "Nome do empurrador",
+      "categoria": "EM_TRANSITO"
+    },
+    "205": {
+      "descricao": "Numero da frota",
+      "categoria": "EM_TRANSITO"
+    },
+    "206": {
+      "descricao": "Data de chegada em Belem",
+      "categoria": "EM_TRANSITO"
+    },
+    "207": {
+      "descricao": "Data de saida de Belem",
+      "categoria": "EM_TRANSITO"
+    },
+    "208": {
+      "descricao": "Data de chegada na transportadora",
+      "categoria": "EM_TRANSITO"
+    },
+    "209": {
+      "descricao": "Data de saida da transportadora",
+      "categoria": "EM_TRANSITO"
+    },
+    "210": {
+      "descricao": "Data de chegada no porto",
+      "categoria": "EM_TRANSITO"
+    },
+    "211": {
+      "descricao": "Data de saida do porto",
+      "categoria": "EM_TRANSITO"
+    },
+    "212": {
+      "descricao": "Data de chegada na segunda transportadora",
+      "categoria": "EM_TRANSITO"
+    },
+    "213": {
+      "descricao": "Data de saida da segunda transportadora (redespacho)",
+      "categoria": "EM_TRANSITO"
+    },
+    "SSW-00": {
+      "descricao": "Saida para entrega (usado por dominio de redespacho/parceiro; via WebAPI de rastreamento SSW)",
+      "categoria": "EM_TRANSITO"
+    },
+    "SSW-01": {
+      "descricao": "Mercadoria entregue (via WebAPI de rastreamento SSW)",
+      "categoria": "ENTREGUE"
+    },
+    "SSW-24": {
+      "descricao": "Imagem anexo — incidente/ocorrencia registrada com foto, ex.: quebra de veiculo (via WebAPI de rastreamento SSW)",
+      "categoria": "EM_TRANSITO"
+    },
+    "SSW-30": {
+      "descricao": "Comunicado de ocorrencia enviado ao cliente (via WebAPI de rastreamento SSW)",
+      "categoria": "OUTROS"
+    },
+    "SSW-87": {
+      "descricao": "Pendencia solucionada (via WebAPI de rastreamento SSW)",
+      "categoria": "EM_TRANSITO"
+    },
+    "SSW-06": {
+      "descricao": "Local de entrega nao localizado (via WebAPI de rastreamento SSW)",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "SSW-36": {
+      "descricao": "Mercadoria em devolucao ao remetente (via WebAPI de rastreamento SSW)",
+      "categoria": "DEVOLUCAO"
+    },
+    "SSW-21": {
+      "descricao": "Local de entrega fechado/ausente (via WebAPI de rastreamento SSW)",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "SSW-27": {
+      "descricao": "Aguardando autorizacao para reentrega (via WebAPI de rastreamento SSW)",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "SSW-51": {
+      "descricao": "Sobra de mercadoria (via portal SSW, tela 101 - Situacao do CTRC)",
+      "categoria": "SINISTRO"
+    },
+    "SSW-57": {
+      "descricao": "Mercadoria entregue no parceiro de redespacho, ainda nao chegou ao destinatario final (via WebAPI de rastreamento SSW)",
+      "categoria": "EM_TRANSITO"
+    },
+    "SSW-80": {
+      "descricao": "Documento de transporte emitido / CT-e autorizado (via WebAPI de rastreamento SSW)",
+      "categoria": "EM_TRANSITO"
+    },
+    "SSW-82": {
+      "descricao": "Saida de unidade (via WebAPI de rastreamento SSW)",
+      "categoria": "EM_TRANSITO"
+    },
+    "SSW-83": {
+      "descricao": "Chegada em unidade de transbordo (via WebAPI de rastreamento SSW)",
+      "categoria": "EM_TRANSITO"
+    },
+    "SSW-85": {
+      "descricao": "Saida para entrega (via WebAPI de rastreamento SSW)",
+      "categoria": "EM_TRANSITO"
+    },
+    "SSW-98": {
+      "descricao": "Chegada em unidade (via WebAPI de rastreamento SSW)",
+      "categoria": "EM_TRANSITO"
+    },
+    "SSW-68": {
+      "descricao": "Entrega barrada/bloqueada (via WebAPI de rastreamento SSW)",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "JAMEF-ROTA": {
+      "descricao": "Em rota de entrega (via webhook Jamef)",
+      "categoria": "EM_TRANSITO"
+    },
+    "JAMEF-SAIDA-FILIAL": {
+      "descricao": "Saida da filial de origem (movimentacao via webhook Jamef)",
+      "categoria": "EM_TRANSITO"
+    },
+    "JAMEF-CHEGADA-TRANSF": {
+      "descricao": "Chegada em transferencia (movimentacao via webhook Jamef)",
+      "categoria": "EM_TRANSITO"
+    },
+    "JAMEF-SAIDA-TRANSF": {
+      "descricao": "Saida em transferencia (movimentacao via webhook Jamef)",
+      "categoria": "EM_TRANSITO"
+    },
+    "JAMEF-00": {
+      "descricao": "Transporte iniciado (via webhook Jamef)",
+      "categoria": "EM_TRANSITO"
+    },
+    "JAMEF-01": {
+      "descricao": "Entrega realizada normalmente (via webhook Jamef)",
+      "categoria": "ENTREGUE"
+    },
+    "JAMEF-10": {
+      "descricao": "Local fechado em horario comercial (via webhook Jamef)",
+      "categoria": "TENTATIVA_FRUSTRADA"
+    },
+    "JAMEF-28": {
+      "descricao": "Mercadoria retida na fiscalizacao (via webhook Jamef)",
+      "categoria": "EM_TRANSITO"
+    },
+    "JAMEF-79": {
+      "descricao": "Avaria parcial de mercadoria (via webhook Jamef)",
+      "categoria": "SINISTRO"
+    },
+    "JAMEF-81": {
+      "descricao": "Falta parcial de mercadoria (via webhook Jamef)",
+      "categoria": "SINISTRO"
+    },
+    "JAMEF-91": {
+      "descricao": "Prazo de entrega diferenciado / conferencia no armazem (via webhook Jamef)",
+      "categoria": "EM_TRANSITO"
+    },
+    "JAMEF-98": {
+      "descricao": "Saida de transferencia (via webhook Jamef)",
+      "categoria": "EM_TRANSITO"
+    },
+    "JAMEF-99": {
+      "descricao": "Outros tipos de ocorrencia nao especificados (via webhook Jamef)",
+      "categoria": "OUTROS"
+    },
+    "SSW-02": {
+      "descricao": "Mercadoria pre-entregue (mobile) - aguardando confirmacao da entrega (via WebAPI SSW)",
+      "categoria": "EM_TRANSITO"
+    },
+    "SSW-03": {
+      "descricao": "Em conferencia pelo destinatario (via WebAPI SSW)",
+      "categoria": "EM_TRANSITO"
+    },
+    "SSW-19": {
+      "descricao": "Confirmacao do parceiro / reentrega solicitada (via WebAPI SSW)",
+      "categoria": "EM_TRANSITO"
+    },
+    "SSW-29": {
+      "descricao": "Destinatario retira a mercadoria no deposito da transportadora (via WebAPI SSW)",
+      "categoria": "EM_TRANSITO"
+    },
+    "SSW-46": {
+      "descricao": "Ocorrencia administrativa lancada via arquivo EDI (via WebAPI SSW)",
+      "categoria": "OUTROS"
+    },
+    "SSW-50": {
+      "descricao": "Atraso por forca maior / excesso de chuvas na regiao (via WebAPI SSW)",
+      "categoria": "EM_TRANSITO"
+    },
+    "SSW-91": {
+      "descricao": "Entrega agendada/programada com o destinatario (via WebAPI SSW)",
+      "categoria": "EM_TRANSITO"
+    }
+  }
+}

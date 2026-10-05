@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Frete sobre Faturamento — LogHub</title>
+<link rel="stylesheet" href="/static/volix.css" />
+<style>
+  /* Volix (tokens + menu lateral + cabeçalho) vem de /static/volix.css.
+     Aqui só o CSS específico do %NF + overrides desta tela. */
+  header p { max-width: 760px; }
+
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 20px; }
+  .panel h2 { margin: 0 0 14px; font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  label.inline { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  select { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 6px 8px; font-size: 12px; }
+  button, a.btn { background: var(--accent); color: #fff; border: none; padding: 9px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; text-decoration: none; display: inline-block; }
+  button:hover, a.btn:hover { opacity: .9; }
+  button.secondary, a.btn.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  button.mini { padding: 4px 10px; font-size: 11px; }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .kpi { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .kpi .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+  .kpi .val { font-size: 26px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .kpi .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .kpi.hero { border-width: 2px; }
+  .kpi.hero.clic { cursor: pointer; transition: box-shadow .12s, transform .06s; }
+  .kpi.hero.clic:hover { box-shadow: 0 0 0 1px var(--muted); }
+  .kpi.hero.clic:active { transform: translateY(1px); }
+  .kpi.hero.clic::after { content: '⤵'; float: right; font-size: 12px; color: var(--muted); margin-top: -10px; opacity: .6; }
+  .kpi.hero.sel { border-color: var(--accent) !important; box-shadow: inset 0 0 0 2px var(--accent); }
+  .kpi.hero.sel::after { content: '✕'; color: var(--accent); opacity: 1; }
+  .kpi.clicop { cursor: pointer; transition: box-shadow .12s, transform .06s; }
+  .kpi.clicop:hover { box-shadow: 0 0 0 1px var(--muted); }
+  .kpi.clicop:active { transform: translateY(1px); }
+  .kpi.opsel { border-color: var(--accent) !important; box-shadow: inset 0 0 0 2px var(--accent); }
+  .band-verde { color: var(--ok); } .band-amarelo { color: var(--warn); } .band-vermelho { color: var(--bad); }
+  .bd-verde { border-color: var(--ok) !important; } .bd-amarelo { border-color: var(--warn) !important; } .bd-vermelho { border-color: var(--bad) !important; }
+
+  .bandpills { display:flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; align-items:center; }
+  .pill { display:inline-flex; align-items:center; gap:6px; font-size:12px; background: var(--bg); border:1px solid var(--border); border-radius: 20px; padding: 5px 12px; cursor: pointer; transition: border-color .12s, background .12s; user-select:none; }
+  .pill:hover { border-color: var(--muted); }
+  .pill.active { background: rgba(59,130,246,.14); border-color: var(--accent); }
+  .pill.filtro-off { cursor: default; color: var(--muted); background: transparent; border: none; padding-left: 0; }
+  .pill.filtro-off:hover { border: none; }
+  .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+  .card .card-head { display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px; gap: 10px; }
+  .card h3 { margin: 0; font-size: 13px; color: var(--text); }
+  .card .hint { font-size: 11px; color: var(--muted); }
+  svg.chart { width: 100%; height: auto; display: block; }
+
+  .legend { display:flex; flex-direction: column; gap: 4px; font-size: 12px; }
+  .legend .li { display:flex; align-items:center; gap:8px; justify-content: space-between; padding: 3px 6px; border-radius: 5px; border: 1px solid transparent; }
+  .legend .li.clic { cursor: pointer; }
+  .legend .li.clic:hover { background: rgba(255,255,255,.04); }
+  .legend .li.sel { border-color: var(--accent); background: rgba(59,130,246,.12); font-weight: 600; }
+  .legend .li .nm { display:flex; align-items:center; gap:8px; }
+  .donut-wrap { display:flex; gap: 18px; align-items:center; flex-wrap: wrap; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 10px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: rgba(255,255,255,.03); }
+  tbody tr.linha-foco { background: rgba(59,130,246,.12); box-shadow: inset 3px 0 0 var(--accent); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .sit { display:inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .sit.verde { background: var(--ok-bg); color: var(--ok); }
+  .sit.amarelo { background: var(--warn-bg); color: var(--warn); }
+  .sit.vermelho { background: var(--bad-bg); color: var(--bad); }
+  .sit.none { background: var(--spot-bg); color: var(--spot); }
+
+  .empty { color: var(--muted); font-size: 13px; padding: 30px 0; text-align: center; }
+  #tip { position: fixed; z-index: 80; display: none; background: #0b0f17; border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-size: 12px; pointer-events: none; box-shadow: 0 6px 20px rgba(0,0,0,.4); max-width: 260px; }
+  #tip b { color: #fff; }
+
+  /* Editor de metas por estado */
+  .modal-back { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: flex-start; justify-content: center; z-index: 100; overflow: auto; padding: 40px 16px; }
+  .modal-back.open { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; width: min(660px, 100%); box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+  .modal h3 { margin: 0 0 6px; font-size: 16px; }
+  .modal .muted { color: var(--muted); font-size: 12px; line-height: 1.5; }
+  .metas-grid { display: grid; grid-template-columns: 1fr 90px 90px; gap: 7px 12px; align-items: center; margin-top: 14px; max-height: 46vh; overflow-y: auto; padding-right: 6px; }
+  .metas-grid .hd { font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: .03em; position: sticky; top: 0; background: var(--panel); padding-bottom: 2px; }
+  .metas-grid .hd.num, .metas-grid input { text-align: right; }
+  .metas-grid .nm { font-size: 13px; }
+  .metas-grid .nm.def { font-weight: 700; }
+  .metas-grid input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 5px 6px; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .metas-grid .reg { grid-column: 1 / -1; font-size: 11px; color: #8bc34a; text-transform: uppercase; letter-spacing: .04em; margin-top: 10px; font-weight: 700; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <svg class="brand-iso" width="42" height="42" viewBox="0 0 40 40" aria-label="Volix"><defs><clipPath id="sbL"><rect x="0" y="0" width="19" height="40"/></clipPath><clipPath id="sbR"><rect x="21" y="0" width="19" height="40"/></clipPath></defs><g clip-path="url(#sbL)" fill="#f3f5f4"><rect x="3" y="15.5" width="34" height="9" rx="4.5" transform="rotate(45 20 20)"/><rect x="3" y="15.5" width="34" height="9" rx="4.5" transform="rotate(-45 20 20)"/></g><g clip-path="url(#sbR)" fill="#c8f135"><rect x="3" y="15.5" width="34" height="9" rx="4.5" transform="rotate(45 20 20)"/><rect x="3" y="15.5" width="34" height="9" rx="4.5" transform="rotate(-45 20 20)"/></g></svg>
+    <div class="volix">Log<b>H</b>ub</div>
+    <div class="glow"></div>
+    <div class="tag">Sua logística <b>num só lugar</b></div>
+  </div>
+  <nav class="side-nav">
+    <a href="/home">🏠 Início</a>
+    <div class="sec">Financeiro</div>
+    <a href="/audit">📋 Auditoria de CTe</a>
+    <a href="/percent-nf" class="active">💰 Frete sobre Faturamento</a>
+    <a href="/conferencia">🧾 Conferência de Fatura</a>
+    <div class="sec">Suprimentos</div>
+    <a href="/coletas">🚚 Coleta em Fornecedores</a>
+    <div class="sec">Expedição</div>
+    <a href="/romaneio">📦 Romaneio de Expedição</a>
+    <div class="sec">Entregas</div>
+    <a href="/tracking">🗼 Torre de Controle</a>
+    <a href="/relatorio-dia">📨 Relatório do Dia</a>
+    <a href="/scorecard">🏆 Scorecard de Desempenho</a>
+    <div class="sec">Comercial</div>    <a href="/vendas">📈 Análise de Vendas</a>
+    <div class="sec">Configuração</div>
+    <a href="/cadastro">🗂️ Cadastro de Tabelas</a>
+  </nav>
+</aside>
+
+<header>
+  <svg class="vmark" width="40" height="40" viewBox="0 0 40 40" aria-label="Volix" style="color:var(--text)"><defs><clipPath id="vmkL"><rect x="0" y="0" width="19" height="40"/></clipPath><clipPath id="vmkR"><rect x="21" y="0" width="19" height="40"/></clipPath></defs><g clip-path="url(#vmkL)" fill="currentColor"><rect x="3" y="15.5" width="34" height="9" rx="4.5" transform="rotate(45 20 20)"/><rect x="3" y="15.5" width="34" height="9" rx="4.5" transform="rotate(-45 20 20)"/></g><g clip-path="url(#vmkR)" fill="#C8F135"><rect x="3" y="15.5" width="34" height="9" rx="4.5" transform="rotate(45 20 20)"/><rect x="3" y="15.5" width="34" height="9" rx="4.5" transform="rotate(-45 20 20)"/></g></svg>
+  <h1>Frete sobre Faturamento</h1>
+  <p>Custo de frete sobre faturamento (%NF) = frete cobrado ÷ valor da mercadoria transportada. Quanto <b>menor</b>, melhor. A meta é <b>por estado</b> (o frete cresce com a distância) — <span class="band-verde">no alvo</span>, <span class="band-amarelo">atenção</span>, <span class="band-vermelho">crítico</span>.</p>
+</header>
+
+<main>
+
+  <div class="panel">
+    <div class="row" style="justify-content: space-between;">
+      <div class="row">
+        <label class="inline">Mês
+          <select id="mesFilter"><option value="">Todos</option></select>
+        </label>
+        <label class="inline">Escopo
+          <select id="escopoFilter">
+            <option value="distribuicao">Distribuição (venda)</option>
+            <option value="coleta">Coleta (entrada)</option>
+            <option value="todas">Todas</option>
+          </select>
+        </label>
+        <label class="inline">Transportadora
+          <select id="transpFilter"><option value="">Todas</option></select>
+        </label>
+        <button class="secondary" id="refreshBtn" type="button">Atualizar</button>
+        <button class="secondary" id="metasBtn" type="button">⚙ Metas por estado</button>
+        <button class="secondary" id="marcarBtn" type="button">🏷️ Marcar reentrega/devolução</button>
+        <span class="pill" id="ufChip" style="display:none;"></span>
+      </div>
+      <a class="btn" id="exportBtn" href="/api/percent-nf/export.xlsx">📄 Exportar Excel</a>
+    </div>
+    <div id="coletaNote" style="margin-top:12px; font-size:12px; color:var(--muted); border-top:1px solid var(--border); padding-top:10px;"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Resumo — custo de frete sobre faturamento</h2>
+    <div class="kpis" id="kpis"></div>
+    <div class="bandpills" id="bandpills"></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-head">
+        <h3 id="barrasTitle">%NF por transportadora</h3>
+        <div class="row">
+          <span class="hint" id="barrasHint">👆 clique numa barra p/ focar a transportadora</span>
+          <button class="secondary mini" id="voltarFoco" type="button" style="display:none;">↩ visão geral</button>
+          <button class="secondary mini" data-png="barras" type="button">PNG</button>
+        </div>
+      </div>
+      <svg class="chart" id="chartBarras"></svg>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <h3 id="donutTitle">Participação no frete total</h3>
+        <button class="secondary mini" data-png="donut" type="button">PNG</button>
+      </div>
+      <div class="donut-wrap">
+        <svg class="chart" id="chartDonut" style="max-width:220px;"></svg>
+        <div class="legend" id="donutLegend" style="flex:1;min-width:180px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px;">
+    <div class="card-head">
+      <h3 id="mapaTitle">%NF por estado</h3>
+      <div class="row">
+        <span class="hint" id="mapaHint">👆 clique nos estados p/ somar o custo (pode marcar vários) · clique de novo p/ remover</span>
+        <button class="secondary mini" data-png="mapa" type="button">PNG</button>
+      </div>
+    </div>
+    <div class="donut-wrap" style="align-items:flex-start;">
+      <svg class="chart" id="chartMapa" style="max-width:430px;"></svg>
+      <div class="legend" id="mapaRank" style="flex:1;min-width:200px;"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px;">
+    <div class="card-head">
+      <h3 id="linhaTitle">Evolução mensal do %NF (geral)</h3>
+      <div class="row">
+        <span class="hint" id="linhaHint">👆 clique num mês p/ filtrar · passe o mouse p/ números</span>
+        <button class="secondary mini" data-png="linha" type="button">PNG</button>
+      </div>
+    </div>
+    <svg class="chart" id="chartLinha"></svg>
+  </div>
+
+  <div class="panel" style="margin-top:20px;">
+    <h2>Detalhe por transportadora</h2>
+    <div style="overflow-x:auto;">
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Transportadora</th>
+            <th class="num">%NF</th>
+            <th class="num">Meta mix</th>
+            <th>Situação</th>
+            <th class="num">Valor NF</th>
+            <th class="num">Frete s/ NF</th>
+            <th class="num">Frete total</th>
+            <th class="num">Ticket méd.</th>
+            <th class="num">CTes</th>
+            <th class="num">Sem NF</th>
+          </tr>
+        </thead>
+        <tbody id="tblBody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="emptyMsg" style="display:none;">Nenhum CTe auditado ainda. Audite CTes no painel de <a href="/audit" style="color:var(--accent);">Auditoria</a> para alimentar o %NF.</div>
+  </div>
+
+</main>
+
+<div id="tip"></div>
+
+<!-- Editor de metas por estado -->
+<div class="modal-back" id="metasModal">
+  <div class="modal">
+    <h3>Metas de %NF por estado</h3>
+    <div class="muted">Alvo (verde) e limite de atenção (amarelo) do custo de frete sobre faturamento, por UF de destino. Menor é melhor. Estados sem meta própria usam o <b>Padrão</b>. Uma transportadora que entrega em vários estados é avaliada por uma meta efetiva ponderada pelo mix dela.</div>
+    <div class="metas-grid" id="metasBody"></div>
+    <div class="modal-actions">
+      <button class="secondary" id="metasCancelar" type="button">Cancelar</button>
+      <button id="metasSalvar" type="button">Salvar metas</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-back" id="marcarModal">
+  <div class="modal" style="width:min(760px,100%);">
+    <h3>Marcar reentrega / devolução</h3>
+    <div class="muted">A detecção é automática (flag do CTe). Aqui você <b>corrige manualmente</b> um CTe: marque como Reentrega, Devolução ou force Normal. A marcação manual vence a automática e entra nos cards. Busque pelo nº do CTe, transportadora ou destino.</div>
+    <div class="row" style="margin-top:12px;">
+      <input id="marcarBusca" type="text" placeholder="nº do CTe, transportadora, destino…" style="flex:1;min-width:220px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:8px 10px;font-size:13px;" />
+      <button id="marcarBuscarBtn" type="button">Buscar</button>
+    </div>
+    <div id="marcarLista" style="max-height:46vh;overflow-y:auto;margin-top:12px;"></div>
+    <div class="modal-actions">
+      <button class="secondary" id="marcarFechar" type="button">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/br_geo.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const SVGNS = 'http://www.w3.org/2000/svg';
+const COR = { ok:'#22c55e', warn:'#f59e0b', bad:'#ef4444', spot:'#64748b', accent:'#3b82f6',
+              muted:'#8b93a7', border:'#2a3244', bg:'#0f1420', text:'#e6e9f0' };
+const PALETA = ['#3b82f6','#8bc34a','#f59e0b','#a855f7','#ec4899','#14b8a6','#f43f5e','#eab308','#64748b'];
+let DEF_META = 15, DEF_ATENCAO = 20;   // padrão (estados sem meta própria)
+let METAS = null;
+let DADOS = null;
+let filtroBanda = null;   // 'verde' | 'amarelo' | 'vermelho' | null
+let ufsSel = [];          // UFs selecionadas no mapa (seleção múltipla) → filtra o painel
+// Transportadora selecionada = filtro GLOBAL no servidor (todos os cards + mapa reagem).
+const transpAtual = () => $('#transpFilter').value || null;
+let opSel = null;         // modo análise de operação: 'REENTREGA' | 'DEVOLUCAO' | null
+
+// Clicar num card de reentrega/devolução → analisa SÓ aquele tipo (mapa + todos os
+// cards + transportadoras). Clicar de novo (ou no outro) alterna. Reseta UF ao trocar
+// de modo (o mapa muda de eixo: devolução é por origem/cliente).
+function selecionarOp(op) {
+  opSel = (opSel === op) ? null : op;
+  ufsSel = [];
+  load();
+}
+
+// Estados por região — usado no editor de metas (agrupa as UFs por região).
+const REGIOES = {
+  'Norte':        ['AC','AP','AM','PA','RO','RR','TO'],
+  'Nordeste':     ['AL','BA','CE','MA','PB','PE','PI','RN','SE'],
+  'Centro-Oeste': ['DF','GO','MT','MS'],
+  'Sudeste':      ['ES','MG','RJ','SP'],
+  'Sul':          ['PR','RS','SC'],
+};
+
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => (
+  { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const fmtInt = (n) => (n ?? 0).toLocaleString('pt-BR');
+const pct = (n) => (n === null || n === undefined) ? '—' : n.toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 }) + '%';
+const pct1 = (n) => (n === null || n === undefined) ? '—' : n.toLocaleString('pt-BR', { maximumFractionDigits:1 }) + '%';
+const money = (n) => 'R$ ' + (n ?? 0).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+function moneyC(n) {   // compacto, para eixos/KPIs
+  n = n ?? 0; const a = Math.abs(n);
+  if (a >= 1e6) return 'R$ ' + (n/1e6).toLocaleString('pt-BR', { maximumFractionDigits:2 }) + ' mi';
+  if (a >= 1e3) return 'R$ ' + (n/1e3).toLocaleString('pt-BR', { maximumFractionDigits:1 }) + ' mil';
+  return 'R$ ' + n.toLocaleString('pt-BR', { maximumFractionDigits:0 });
+}
+// %NF: MENOR é melhor. Meta/atenção vêm por item (por estado ou efetiva do mix).
+function _m(meta) { return meta === null || meta === undefined ? DEF_META : meta; }
+function _a(atencao) { return atencao === null || atencao === undefined ? DEF_ATENCAO : atencao; }
+function corNf(p, meta, atencao) {
+  if (p === null || p === undefined) return COR.spot;
+  return p <= _m(meta) ? COR.ok : (p <= _a(atencao) ? COR.warn : COR.bad);
+}
+function bandDe(p, meta, atencao) {
+  if (p === null || p === undefined) return 'none';
+  return p <= _m(meta) ? 'verde' : (p <= _a(atencao) ? 'amarelo' : 'vermelho');
+}
+// meta/atenção efetivas de uma linha de dados
+const MA = (x) => [x.meta_efetiva, x.atencao_efetiva];
+
+function el(tag, attrs = {}, text = null) {
+  const e = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== null) e.textContent = text;
+  return e;
+}
+function clear(svg) { while (svg.firstChild) svg.removeChild(svg.firstChild); }
+const tip = $('#tip');
+function showTip(html, ev) { tip.innerHTML = html; tip.style.display = 'block'; tip.style.left = (ev.clientX + 14) + 'px'; tip.style.top = (ev.clientY + 14) + 'px'; }
+function hideTip() { tip.style.display = 'none'; }
+
+// ─── Barras horizontais: %NF por transportadora (pior no topo) ─────────────
+function escalaX(vals) {
+  const m = Math.max(0, ...vals.filter(v => v != null));
+  return Math.max(5, Math.ceil(m * 1.15 / 5) * 5);   // múltiplo de 5%
+}
+function renderBarras(svg, lista) {
+  clear(svg);
+  const linhas = [...lista].sort((a, b) => (b.pct_nf ?? -1) - (a.pct_nf ?? -1));
+  const L = 150, R = 52, T = 8, B = 30, rowH = 30;
+  const W = 780, plotW = W - L - R;
+  const H = Math.max(60, linhas.length * rowH + T + B);
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const esc = escalaX(linhas.map(l => l.pct_nf));
+  const x = (v) => L + (Math.max(0, Math.min(esc, v)) / esc) * plotW;
+
+  [0, .25, .5, .75, 1].forEach(f => {
+    const v = esc * f;
+    svg.appendChild(el('line', { x1:x(v), y1:T, x2:x(v), y2:H-B, stroke:COR.border, 'stroke-width':1 }));
+    svg.appendChild(el('text', { x:x(v), y:H-B+16, fill:COR.muted, 'font-size':10, 'text-anchor':'middle' }, pct1(v)));
+  });
+
+  linhas.forEach((l, i) => {
+    const y = T + i * rowH, cy = y + rowH / 2;
+    const [m, a] = MA(l);
+    const foco = l.transportadora === transpAtual();
+    if (foco) svg.appendChild(el('rect', { x:0, y:y+1, width:W, height:rowH-2, rx:4, fill:'rgba(59,130,246,.12)', stroke:COR.accent, 'stroke-width':1 }));
+    svg.appendChild(el('text', { x:L-8, y:cy+4, fill:COR.text, 'font-size':12, 'font-weight': foco?700:400, 'text-anchor':'end' },
+      l.transportadora.length > 22 ? l.transportadora.slice(0,21) + '…' : l.transportadora));
+    if (l.pct_nf === null) {
+      svg.appendChild(el('text', { x:L+6, y:cy+4, fill:COR.spot, 'font-size':11 }, 'sem valor de NF'));
+    } else {
+      const c = corNf(l.pct_nf, m, a);
+      svg.appendChild(el('rect', { x:L, y:y+6, width:Math.max(2, x(l.pct_nf)-L), height:rowH-12, rx:3, fill:c, opacity: foco?1:.85 }));
+      // marca da meta desta transportadora (linha vertical curta na barra)
+      if (m != null && m <= esc) svg.appendChild(el('line', { x1:x(m), y1:y+4, x2:x(m), y2:y+rowH-4, stroke:'#fff', 'stroke-width':1.5, 'stroke-dasharray':'2 2', opacity:.7 }));
+      svg.appendChild(el('text', { x:x(l.pct_nf)+6, y:cy+4, fill:c, 'font-size':12, 'font-weight':700 }, pct(l.pct_nf)));
+    }
+    const hit = el('rect', { x:0, y:y, width:W, height:rowH, fill:'transparent', style:'cursor:pointer' });
+    hit.addEventListener('mousemove', (ev) => showTip(
+      `<b>${escapeHtml(l.transportadora)}</b><br>%NF: ${pct(l.pct_nf)} · meta do mix ≤ ${pct(m)}<br>Frete s/ NF: ${money(l.frete_base)}<br>Valor NF: ${money(l.valor_nf)}<br>Frete total: ${money(l.frete_total)} · ${fmtInt(l.ctes)} CTes<br><span style="color:#8b93a7">clique p/ focar a transportadora</span>`, ev));
+    hit.addEventListener('mouseleave', hideTip);
+    hit.addEventListener('click', () => selecionarTransp(l.transportadora));
+    svg.appendChild(hit);
+  });
+}
+
+// ─── Donut: participação de cada transportadora no frete total ─────────────
+function freteSegments(linhas) {
+  const ordenado = [...linhas].filter(l => l.frete_total > 0).sort((a, b) => b.frete_total - a.frete_total);
+  const TOP = 7;
+  const segs = ordenado.slice(0, TOP).map((l, i) => ({
+    label: l.transportadora, nome: l.transportadora, valor: l.frete_total, pct_nf: l.pct_nf, cor: PALETA[i % PALETA.length],
+  }));
+  const resto = ordenado.slice(TOP);
+  if (resto.length) {
+    segs.push({ label: `Outras (${resto.length})`, nome: null, valor: resto.reduce((a, l) => a + l.frete_total, 0), pct_nf: null, cor: COR.spot });
+  }
+  return segs;
+}
+function renderDonut(svg, legendEl, segs) {
+  clear(svg); legendEl.innerHTML = '';
+  const size = 200, cx = size/2, cy = size/2, rOut = 90, rIn = 54;
+  svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+  const total = segs.reduce((a, s) => a + s.valor, 0);
+  if (!total) { svg.appendChild(el('text', { x:cx, y:cy, fill:COR.muted, 'font-size':12, 'text-anchor':'middle' }, 'sem dados')); return; }
+  let ang = -Math.PI / 2;
+  const arc = (cx, cy, r, a) => [cx + r*Math.cos(a), cy + r*Math.sin(a)];
+  segs.forEach(s => {
+    const frac = s.valor / total, a2 = ang + frac * 2 * Math.PI;
+    const big = (a2 - ang) > Math.PI ? 1 : 0;
+    const [x1,y1] = arc(cx,cy,rOut,ang), [x2,y2] = arc(cx,cy,rOut,a2);
+    const [x3,y3] = arc(cx,cy,rIn,a2), [x4,y4] = arc(cx,cy,rIn,ang);
+    const d = `M${x1} ${y1} A${rOut} ${rOut} 0 ${big} 1 ${x2} ${y2} L${x3} ${y3} A${rIn} ${rIn} 0 ${big} 0 ${x4} ${y4} Z`;
+    const sel = s.nome && s.nome === transpAtual();
+    const clic = !!s.nome;
+    const p = el('path', { d, fill:s.cor, opacity: sel ? 1 : .9, style:'cursor:' + (clic ? 'pointer' : 'default') });
+    if (sel) { p.setAttribute('stroke', '#fff'); p.setAttribute('stroke-width', 2); }
+    const pctv = (frac*100).toLocaleString('pt-BR', {maximumFractionDigits:1});
+    const extra = clic ? '<br><span style="color:#8b93a7">clique p/ focar</span>' : '';
+    p.addEventListener('mousemove', (ev) => showTip(`<b>${escapeHtml(s.label)}</b><br>${money(s.valor)} · ${pctv}% do frete${s.pct_nf!=null?'<br>%NF: '+pct(s.pct_nf):''}${extra}`, ev));
+    p.addEventListener('mouseleave', hideTip);
+    if (clic) p.addEventListener('click', () => selecionarTransp(s.nome));
+    svg.appendChild(p);
+    ang = a2;
+    const li = document.createElement('div');
+    li.className = 'li' + (clic ? ' clic' : '') + (sel ? ' sel' : '');
+    li.innerHTML = `<span class="nm"><span class="dot" style="background:${s.cor}"></span>${escapeHtml(s.label)}</span><span>${pctv}%</span>`;
+    if (clic) li.addEventListener('click', () => selecionarTransp(s.nome));
+    legendEl.appendChild(li);
+  });
+  svg.appendChild(el('text', { x:cx, y:cy-6, fill:COR.text, 'font-size':15, 'font-weight':700, 'text-anchor':'middle' }, moneyC(total)));
+  svg.appendChild(el('text', { x:cx, y:cy+12, fill:COR.muted, 'font-size':11, 'text-anchor':'middle' }, 'frete total'));
+}
+
+// Clicar numa transportadora (barra/tabela/pizza) → filtro GLOBAL: recarrega o
+// painel inteiro (KPIs, mapa, série, pizza) já filtrado por ela. Clicar de novo limpa.
+function selecionarTransp(nome) {
+  const sel = $('#transpFilter');
+  sel.value = (sel.value === nome) ? '' : nome;   // alterna
+  load();
+}
+
+// ─── Linha: evolução mensal do %NF ─────────────────────────────────────────
+function renderLinha(svg, serie, clicavelMes = false) {
+  clear(svg);
+  const L = 44, R = 20, T = 14, B = 34;
+  const W = 780, plotW = W - L - R, H = 260, plotH = H - T - B;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const pts = serie.filter(s => s.pct_nf !== null);
+  const esc = escalaX(serie.map(s => s.pct_nf));
+  const y = (v) => T + (1 - Math.max(0, Math.min(esc, v)) / esc) * plotH;
+  const n = serie.length;
+  const x = (i) => n <= 1 ? L + plotW/2 : L + (i / (n - 1)) * plotW;
+
+  [0, .25, .5, .75, 1].forEach(f => {
+    const v = esc * f;
+    svg.appendChild(el('line', { x1:L, y1:y(v), x2:W-R, y2:y(v), stroke:COR.border, 'stroke-width':1 }));
+    svg.appendChild(el('text', { x:L-6, y:y(v)+3, fill:COR.muted, 'font-size':10, 'text-anchor':'end' }, pct1(v)));
+  });
+  if (!pts.length) { svg.appendChild(el('text', { x:W/2, y:H/2, fill:COR.muted, 'font-size':12, 'text-anchor':'middle' }, 'sem valor de NF no período')); return; }
+
+  serie.forEach((s, i) => svg.appendChild(el('text', { x:x(i), y:H-14, fill:COR.muted, 'font-size':10, 'text-anchor':'middle' }, s.mes.slice(2))));
+  const path = pts.map((s) => `${x(serie.indexOf(s))},${y(s.pct_nf)}`).join(' ');
+  svg.appendChild(el('polyline', { points:path, fill:'none', stroke:COR.accent, 'stroke-width':2 }));
+  serie.forEach((s, i) => {
+    if (s.pct_nf === null) return;
+    const c = corNf(s.pct_nf, s.meta_efetiva, s.atencao_efetiva);
+    const raio = clicavelMes ? 7 : 5;
+    const dot = el('circle', { cx:x(i), cy:y(s.pct_nf), r:raio, fill:c, stroke:COR.bg, 'stroke-width':1.5, style:'cursor:' + (clicavelMes ? 'pointer' : 'default') });
+    const extra = clicavelMes ? '<br><span style="color:#8b93a7">clique p/ filtrar este mês</span>' : '';
+    dot.addEventListener('mousemove', (ev) => showTip(`<b>${s.mes}</b><br>%NF: ${pct(s.pct_nf)} · meta ≤ ${pct(s.meta_efetiva)}<br>Frete: ${money(s.frete_base)} · NF: ${money(s.valor_nf)}${extra}`, ev));
+    dot.addEventListener('mouseleave', hideTip);
+    if (clicavelMes) dot.addEventListener('click', () => { hideTip(); $('#mesFilter').value = s.mes; load(); });
+    svg.appendChild(dot);
+  });
+}
+
+// ─── Mapa: %NF por estado (mapa real do Brasil, igual ao Scorecard) ────────
+function _tileRank(rankEl, itens, onClick) {
+  rankEl.innerHTML = '';
+  if (!itens.length) { rankEl.innerHTML = '<div class="hint">Sem CTes no período.</div>'; return; }
+  itens.forEach(it => {
+    const li = document.createElement('div');
+    li.className = 'li clic' + (it.sel ? ' sel' : '');
+    li.innerHTML = `<span class="nm"><span class="dot" style="background:${corNf(it.pct_nf, it.meta, it.atencao)}"></span><b>${escapeHtml(it.nome)}</b> · ${fmtInt(it.ctes)} CTes</span><span class="band-${bandDe(it.pct_nf, it.meta, it.atencao)}">${pct(it.pct_nf)}</span>`;
+    li.addEventListener('click', () => onClick(it.nome));
+    rankEl.appendChild(li);
+  });
+}
+function renderMapa(svg, rankEl, porEstado) {
+  clear(svg);
+  const dados = {}; porEstado.forEach(e => dados[e.uf] = e);
+  svg.setAttribute('viewBox', BR_GEO.viewBox);
+  const selPaths = [];
+  Object.keys(BR_GEO.uf).forEach(uf => {
+    const d = dados[uf];
+    const tem = !!d && d.pct_nf !== null;
+    const sel = ufsSel.includes(uf);
+    const path = el('path', { d: BR_GEO.uf[uf], fill: tem ? corNf(d.pct_nf, d.meta, d.atencao) : '#20293a',
+      'fill-opacity': tem ? .85 : .4, stroke: sel ? '#ffffff' : '#0a0d12',
+      'stroke-width': sel ? 2 : .8, 'stroke-linejoin': 'round',
+      style: 'cursor:' + (tem ? 'pointer' : 'default') });
+    if (tem) {
+      path.addEventListener('mousemove', (ev) => showTip(
+        `<b>${uf}</b> — %NF ${pct(d.pct_nf)} · meta ≤ ${pct(d.meta)}<br>Frete: ${money(d.frete_total)}<br>Valor NF: ${money(d.valor_nf)} · ${fmtInt(d.ctes)} CTes<br><span style="color:#8b93a7">clique p/ filtrar (pode marcar vários)</span>`, ev));
+      path.addEventListener('mouseleave', hideTip);
+      path.addEventListener('click', () => selecionarUf(uf));
+    } else {
+      path.addEventListener('mousemove', (ev) => showTip(`<b>${uf}</b><br><span style="color:#8b93a7">sem CTes no período</span>`, ev));
+      path.addEventListener('mouseleave', hideTip);
+    }
+    svg.appendChild(path);
+    if (sel) selPaths.push(path);
+  });
+  selPaths.forEach(p => svg.appendChild(p));   // estados selecionados por cima
+  // rótulos (siglas) nos estados com dados
+  Object.keys(BR_GEO.uf).forEach(uf => {
+    const d = dados[uf]; if (!d || d.pct_nf === null) return;
+    const c = BR_GEO.cent[uf];
+    svg.appendChild(el('text', { x:c[0], y:c[1] + 3.5, fill:'#0a0d12', 'font-size':11, 'font-weight':700, 'text-anchor':'middle', style:'pointer-events:none' }, uf));
+  });
+  const itens = porEstado.map(e => ({ nome:e.uf, pct_nf:e.pct_nf, meta:e.meta, atencao:e.atencao, ctes:e.ctes, sel: ufsSel.includes(e.uf) }))
+                         .sort((a, b) => (b.pct_nf ?? -1) - (a.pct_nf ?? -1));
+  _tileRank(rankEl, itens, selecionarUf);
+}
+function selecionarUf(uf) {
+  const i = ufsSel.indexOf(uf);
+  if (i >= 0) ufsSel.splice(i, 1); else ufsSel.push(uf);   // alterna (seleção múltipla)
+  load();   // recarrega o painel filtrado pelos estados (mapa continua completo)
+}
+
+// ─── Render principal ──────────────────────────────────────────────────────
+function renderKpis(r) {
+  const band = bandDe(r.pct_nf, r.meta_efetiva, r.atencao_efetiva);
+  $('#kpis').innerHTML = `
+    <div class="kpi hero bd-${band}" data-band="${band}" title="%NF = frete cobrado ÷ valor da mercadoria transportada (ponderado). Menor é melhor. Meta efetiva ponderada pelo mix de estados.">
+      <div class="label">%NF geral</div>
+      <div class="val band-${band}">${pct(r.pct_nf)}</div>
+      <div class="sub">meta do mix ≤ ${pct(r.meta_efetiva)} · base ${fmtInt(r.com_valor_nf)} CTes c/ NF</div>
+    </div>
+    <div class="kpi"><div class="label">Frete total pago</div><div class="val">${moneyC(r.frete_total)}</div><div class="sub">ticket méd. ${money(r.ticket_frete||0)}</div></div>
+    <div class="kpi"><div class="label">Valor faturado (NF)</div><div class="val">${moneyC(r.valor_nf)}</div><div class="sub">base do %NF: ${moneyC(r.frete_base)} de frete</div></div>
+    <div class="kpi"><div class="label">CTes</div><div class="val">${fmtInt(r.ctes)}</div><div class="sub">${r.sem_valor_nf ? fmtInt(r.sem_valor_nf) + ' sem valor de NF' : 'todos com valor de NF'}</div></div>
+    <div class="kpi"><div class="label">Transportadoras</div><div class="val">${fmtInt(r.transportadoras)}</div><div class="sub">${fmtInt(r.no_alvo)} no alvo · ${fmtInt(r.criticas)} críticas</div></div>
+    <div class="kpi clicop ${opSel==='REENTREGA'?'opsel':''}" data-op="REENTREGA" title="Clique para analisar SÓ as reentregas — mapa, transportadoras e cards passam a mostrar quem/onde gera mais reentrega. Clique de novo p/ sair.">
+      <div class="label">↩ Custo de reentrega</div>
+      <div class="val ${r.custo_reentrega ? 'band-amarelo' : ''}">${moneyC(r.custo_reentrega)}</div>
+      <div class="sub">${fmtInt(r.ctes_reentrega)} CTe(s) · ${opSel==='REENTREGA'?'✕ analisando':'clique p/ analisar'}</div>
+    </div>
+    <div class="kpi clicop ${opSel==='DEVOLUCAO'?'opsel':''}" data-op="DEVOLUCAO" title="Clique para analisar SÓ as devoluções — mapa (por origem/cliente), transportadoras e cards passam a mostrar quem/onde gera mais devolução. Clique de novo p/ sair.">
+      <div class="label">📦 Custo de devolução</div>
+      <div class="val ${r.custo_devolucao ? 'band-vermelho' : ''}">${moneyC(r.custo_devolucao)}</div>
+      <div class="sub">${fmtInt(r.ctes_devolucao)} CTe(s) · ${opSel==='DEVOLUCAO'?'✕ analisando':'clique p/ analisar'}</div>
+    </div>`;
+  document.querySelectorAll('#kpis .kpi.clicop').forEach(c =>
+    c.addEventListener('click', () => selecionarOp(c.dataset.op)));
+  $('#bandpills').innerHTML = `
+    <span class="pill" data-band="verde"><span class="dot" style="background:${COR.ok}"></span><b>${fmtInt(r.no_alvo)}</b>&nbsp;no alvo</span>
+    <span class="pill" data-band="amarelo"><span class="dot" style="background:${COR.warn}"></span><b>${fmtInt(r.em_atencao)}</b>&nbsp;em atenção</span>
+    <span class="pill" data-band="vermelho"><span class="dot" style="background:${COR.bad}"></span><b>${fmtInt(r.criticas)}</b>&nbsp;críticas</span>
+    <span class="pill filtro-off">vs. meta de cada estado (⚙ ajustável)</span>
+    <span class="pill filtro-off" id="limparBanda" style="display:none;">✕ limpar filtro</span>`;
+  document.querySelectorAll('#bandpills .pill[data-band]').forEach(p =>
+    p.addEventListener('click', () => setBanda(p.dataset.band)));
+  $('#limparBanda').addEventListener('click', () => setBanda(null));
+  // Card-hero também filtra: clicar filtra as transportadoras na faixa do %NF geral (toggle).
+  const heroKpi = $('#kpis .kpi.hero');
+  if (heroKpi && band !== 'none') {
+    heroKpi.classList.add('clic');
+    heroKpi.title = 'Clique para filtrar as transportadoras nesta faixa (' +
+      ({ verde: 'no alvo', amarelo: 'em atenção', vermelho: 'crítico' }[band]) + ') · clique de novo p/ limpar';
+    heroKpi.addEventListener('click', () => setBanda(band));
+  }
+}
+
+function setBanda(b) {
+  filtroBanda = (b === null || filtroBanda === b) ? null : b;
+  renderPainel();
+}
+function listaFiltrada() {
+  if (!filtroBanda) return DADOS.por_transportadora;
+  return DADOS.por_transportadora.filter(l => bandDe(l.pct_nf, l.meta_efetiva, l.atencao_efetiva) === filtroBanda);
+}
+function renderPainel() {
+  const transp = transpAtual();   // filtro global (dados já vêm filtrados do servidor)
+  const lista = listaFiltrada();
+
+  $('#barrasTitle').textContent = '%NF por transportadora' + (filtroBanda ? ' — ' + {verde:'no alvo',amarelo:'atenção',vermelho:'críticas'}[filtroBanda] : '');
+  $('#barrasHint').textContent = transp ? `filtrado: ${transp} — todos os cards e o mapa refletem esta transportadora` : '👆 clique numa barra p/ filtrar o painel por ela · traço branco = meta do mix';
+  renderBarras($('#chartBarras'), lista);
+  renderTable(lista);
+  $('#voltarFoco').style.display = (transp || filtroBanda) ? 'inline-block' : 'none';
+
+  $('#donutTitle').textContent = 'Participação no frete total';
+  renderDonut($('#chartDonut'), $('#donutLegend'), freteSegments(DADOS.por_transportadora));
+
+  $('#linhaTitle').textContent = 'Evolução mensal do %NF' + (transp ? ' — ' + transp : ' (geral)');
+  $('#linhaHint').textContent = '👆 clique num mês p/ filtrar · passe o mouse p/ números';
+  renderLinha($('#chartLinha'), DADOS.serie_mensal, true);
+
+  document.querySelectorAll('#bandpills .pill[data-band]').forEach(p =>
+    p.classList.toggle('active', p.dataset.band === filtroBanda));
+  const heroKpi = $('#kpis .kpi.hero');
+  if (heroKpi) heroKpi.classList.toggle('sel', !!filtroBanda && heroKpi.dataset.band === filtroBanda);
+  const limpar = $('#limparBanda');
+  if (limpar) limpar.style.display = filtroBanda ? 'inline' : 'none';
+}
+
+function renderTable(linhas) {
+  const body = $('#tblBody'); body.innerHTML = '';
+  if (!linhas.length) { $('#emptyMsg').style.display = 'block'; return; }
+  $('#emptyMsg').style.display = 'none';
+  const sitLabel = { verde:'No alvo', amarelo:'Atenção', vermelho:'Crítico', none:'—' };
+  linhas.forEach((l, i) => {
+    const band = bandDe(l.pct_nf, l.meta_efetiva, l.atencao_efetiva);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="num" style="color:var(--muted)">${i + 1}</td>
+      <td>${escapeHtml(l.transportadora)}</td>
+      <td class="num band-${band}"><b>${pct(l.pct_nf)}</b></td>
+      <td class="num" style="color:var(--muted)">≤ ${pct(l.meta_efetiva)}</td>
+      <td><span class="sit ${band}">${sitLabel[band]}</span></td>
+      <td class="num">${money(l.valor_nf)}</td>
+      <td class="num">${money(l.frete_base)}</td>
+      <td class="num">${money(l.frete_total)}</td>
+      <td class="num" style="color:var(--muted)">${money(l.ticket_frete||0)}</td>
+      <td class="num">${fmtInt(l.ctes)}</td>
+      <td class="num ${l.sem_valor_nf?'band-amarelo':''}" style="color:var(--muted)">${fmtInt(l.sem_valor_nf)}</td>`;
+    if (l.transportadora === transpAtual()) tr.classList.add('linha-foco');
+    tr.addEventListener('click', () => selecionarTransp(l.transportadora));
+    body.appendChild(tr);
+  });
+}
+
+$('#voltarFoco').addEventListener('click', () => { $('#transpFilter').value = ''; filtroBanda = null; load(); });
+
+// ─── Editor de metas por estado ────────────────────────────────────────────
+function _metaRow(container, label, key, meta, atencao, isDef) {
+  const nm = document.createElement('div'); nm.className = 'nm' + (isDef ? ' def' : ''); nm.textContent = label;
+  const im = document.createElement('input'); im.type = 'number'; im.step = '0.5'; im.min = '0'; im.value = meta; im.dataset.key = key; im.dataset.field = 'meta';
+  const ia = document.createElement('input'); ia.type = 'number'; ia.step = '0.5'; ia.min = '0'; ia.value = atencao; ia.dataset.key = key; ia.dataset.field = 'atencao';
+  container.appendChild(nm); container.appendChild(im); container.appendChild(ia);
+}
+function abrirMetas() {
+  const box = $('#metasBody'); box.innerHTML = '';
+  const hd1 = document.createElement('div'); hd1.className = 'hd'; hd1.textContent = 'Estado';
+  const hd2 = document.createElement('div'); hd2.className = 'hd num'; hd2.textContent = 'Alvo ≤%';
+  const hd3 = document.createElement('div'); hd3.className = 'hd num'; hd3.textContent = 'Atenção ≤%';
+  box.appendChild(hd1); box.appendChild(hd2); box.appendChild(hd3);
+  const d = METAS.default;
+  _metaRow(box, 'Padrão (demais estados)', '__default__', d.meta, d.atencao, true);
+  for (const [reg, ufs] of Object.entries(REGIOES)) {
+    const h = document.createElement('div'); h.className = 'reg'; h.textContent = reg; box.appendChild(h);
+    ufs.forEach(uf => {
+      const p = METAS.por_uf[uf] || METAS.default;
+      _metaRow(box, uf, uf, p.meta, p.atencao, false);
+    });
+  }
+  $('#metasModal').classList.add('open');
+}
+function fecharMetas() { $('#metasModal').classList.remove('open'); }
+async function salvarMetas() {
+  const acc = {};
+  $('#metasBody').querySelectorAll('input[data-key]').forEach(inp => {
+    const k = inp.dataset.key, f = inp.dataset.field;
+    (acc[k] = acc[k] || {})[f] = parseFloat(String(inp.value).replace(',', '.')) || 0;
+  });
+  const def = acc['__default__'] || { meta: DEF_META, atencao: DEF_ATENCAO };
+  delete acc['__default__'];
+  const btn = $('#metasSalvar'); btn.disabled = true; btn.textContent = 'Salvando…';
+  try {
+    const resp = await fetch('/api/percent-nf/metas', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ default: def, por_uf: acc }),
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    fecharMetas();
+    await load();
+  } catch (e) {
+    alert('Falha ao salvar as metas. Tente novamente.');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Salvar metas';
+  }
+}
+$('#metasBtn').addEventListener('click', abrirMetas);
+$('#metasCancelar').addEventListener('click', fecharMetas);
+$('#metasSalvar').addEventListener('click', salvarMetas);
+$('#metasModal').addEventListener('click', (e) => { if (e.target === $('#metasModal')) fecharMetas(); });
+
+// ─── Marcação manual de reentrega/devolução ────────────────────────────────
+const TIPO_LABEL = { REENTREGA: 'Reentrega', DEVOLUCAO: 'Devolução', NORMAL: 'Normal (forçado)' };
+function abrirMarcar() { $('#marcarModal').classList.add('open'); $('#marcarBusca').value = ''; buscarCtes(); $('#marcarBusca').focus(); }
+function fecharMarcar() { $('#marcarModal').classList.remove('open'); }
+async function buscarCtes() {
+  const lista = $('#marcarLista');
+  lista.innerHTML = '<div class="hint" style="padding:12px 4px;">Buscando…</div>';
+  const q = $('#marcarBusca').value.trim();
+  const mes = $('#mesFilter').value;
+  const qs = new URLSearchParams();
+  if (q) qs.set('search', q);
+  if (mes) qs.set('mes', mes);
+  qs.set('limit', '60');
+  let rows;
+  try {
+    const resp = await fetch('/api/percent-nf/ctes?' + qs.toString());
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    rows = await resp.json();
+  } catch (e) { lista.innerHTML = '<div class="hint" style="padding:12px 4px;">Falha ao buscar CTes.</div>'; return; }
+  if (!rows.length) { lista.innerHTML = '<div class="hint" style="padding:12px 4px;">Nenhum CTe encontrado. Ajuste a busca.</div>'; return; }
+  lista.innerHTML = '';
+  rows.forEach(r => {
+    const eff = r.tipo_efetivo || 'NORMAL';
+    const marcado = r.tipo_manual ? ` · <span style="color:var(--accent)">manual</span>` : (r.tipo_auto ? ` · <span style="color:var(--muted)">auto</span>` : '');
+    const div = document.createElement('div');
+    div.className = 'li';
+    div.style.cssText = 'padding:8px 6px;gap:10px;align-items:center;';
+    div.innerHTML = `<span class="nm" style="flex:1;min-width:0;">
+        <b>CTe ${escapeHtml(r.numero_cte || '—')}</b> · ${escapeHtml(r.transportadora || '')}<br>
+        <span style="color:var(--muted);font-size:11px;">${escapeHtml(r.origem || '?')} → ${escapeHtml(r.destino || '?')} · ${money(r.valor_cobrado || 0)} · ${escapeHtml((r.data_emissao||''))}${marcado}</span>
+      </span>`;
+    const sel = document.createElement('select');
+    sel.style.cssText = 'background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:5px 6px;font-size:12px;';
+    [['','Auto (detectado)'],['NORMAL','Normal (forçar)'],['REENTREGA','Reentrega'],['DEVOLUCAO','Devolução']].forEach(([v,l]) => {
+      const o = document.createElement('option'); o.value = v; o.textContent = l; sel.appendChild(o);
+    });
+    sel.value = r.tipo_manual || '';
+    sel.addEventListener('change', async () => {
+      sel.disabled = true;
+      try {
+        const resp = await fetch('/api/percent-nf/marcar-operacao', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chave_cte: r.chave_cte, tipo: sel.value }),
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        r.tipo_manual = sel.value || null;
+        await load();          // atualiza os cards do painel na hora
+        await buscarCtes();    // re-render da lista (labels auto/manual)
+      } catch (e) { alert('Falha ao marcar o CTe.'); sel.disabled = false; }
+    });
+    div.appendChild(sel);
+    lista.appendChild(div);
+  });
+}
+$('#marcarBtn').addEventListener('click', abrirMarcar);
+$('#marcarFechar').addEventListener('click', fecharMarcar);
+$('#marcarBuscarBtn').addEventListener('click', buscarCtes);
+$('#marcarBusca').addEventListener('keydown', (e) => { if (e.key === 'Enter') buscarCtes(); });
+$('#marcarModal').addEventListener('click', (e) => { if (e.target === $('#marcarModal')) fecharMarcar(); });
+
+// ─── Exportar gráfico como PNG ─────────────────────────────────────────────
+function svgToPng(svg, filename) {
+  const vb = svg.viewBox.baseVal;
+  const w = vb && vb.width ? vb.width : svg.clientWidth;
+  const h = vb && vb.height ? vb.height : svg.clientHeight;
+  const clone = svg.cloneNode(true);
+  clone.setAttribute('xmlns', SVGNS);
+  clone.setAttribute('width', w); clone.setAttribute('height', h);
+  const xml = new XMLSerializer().serializeToString(clone);
+  const src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(xml)));
+  const img = new Image();
+  img.onload = () => {
+    const scale = 2, c = document.createElement('canvas');
+    c.width = w * scale; c.height = h * scale;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = COR.bg; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.scale(scale, scale); ctx.drawImage(img, 0, 0);
+    c.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = filename; a.click(); URL.revokeObjectURL(a.href); });
+  };
+  img.src = src;
+}
+document.querySelectorAll('[data-png]').forEach(btn => btn.addEventListener('click', () => {
+  const map = { barras:['#chartBarras','percent_nf_por_transportadora.png'], donut:['#chartDonut','participacao_frete.png'],
+                linha:['#chartLinha','evolucao_percent_nf.png'], mapa:['#chartMapa','percent_nf_por_estado.png'] };
+  const [sel, fn] = map[btn.dataset.png];
+  svgToPng($(sel), fn);
+}));
+
+// ─── Carga ─────────────────────────────────────────────────────────────────
+async function loadMeses() {
+  // Falha aqui não é fatal: o seletor fica só com 'Todos' e o painel ainda carrega.
+  try {
+    const resp = await fetch('/api/percent-nf/meses');
+    if (!resp.ok) return;
+    const meses = await resp.json();
+    const sel = $('#mesFilter');
+    for (const m of meses) { const o = document.createElement('option'); o.value = m; o.textContent = m; sel.appendChild(o); }
+  } catch (e) { /* servidor fora do ar — segue com o seletor padrão */ }
+}
+async function load() {
+  const mes = $('#mesFilter').value;
+  const escopo = $('#escopoFilter').value;
+  const transp = $('#transpFilter').value;
+  const qs = new URLSearchParams();
+  if (mes) qs.set('mes', mes);
+  if (ufsSel.length) qs.set('uf', ufsSel.join(','));
+  if (escopo && escopo !== 'distribuicao') qs.set('escopo', escopo);
+  if (transp) qs.set('transp', transp);
+  if (opSel) qs.set('op', opSel);
+  const query = qs.toString();
+  let data;
+  try {
+    const resp = await fetch('/api/percent-nf' + (query ? '?' + query : ''));
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    data = await resp.json();
+  } catch (e) {
+    $('#kpis').innerHTML = '<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--muted);">'
+      + 'Não foi possível carregar os dados de %NF. Verifique se o servidor está no ar e clique em <b>Atualizar</b>.</div>';
+    return;
+  }
+  DADOS = data; METAS = data.metas;
+  DEF_META = METAS.default.meta; DEF_ATENCAO = METAS.default.atencao;
+  filtroBanda = null;
+  opSel = data.op || null;
+  // No modo análise de operação o Escopo não se aplica (é substituído pelo tipo).
+  $('#escopoFilter').disabled = !!opSel;
+  $('#escopoFilter').style.opacity = opSel ? '.5' : '1';
+  popularTransp(data.lista_transportadoras, data.transp);
+  $('#exportBtn').href = '/api/percent-nf/export.xlsx' + (query ? '?' + query : '');
+  const chip = $('#ufChip');
+  if (ufsSel.length) { chip.style.display = 'inline-flex'; chip.innerHTML = `Estado${ufsSel.length > 1 ? 's' : ''}: <b>&nbsp;${ufsSel.join(', ')}</b>&nbsp; ✕`; }
+  else chip.style.display = 'none';
+  renderKpis(data.resumo);
+  renderColetaNote(data);
+  renderMapa($('#chartMapa'), $('#mapaRank'), data.por_estado);
+  renderPainel();
+}
+
+// Aviso: coletas de entrada (origem fora da sede) contadas à parte do %NF de venda.
+function renderColetaNote(data) {
+  const el = $('#coletaNote');
+  const c = data.coletas_resumo || {};
+  const escopo = data.escopo || 'distribuicao';
+  const sede = data.sede_uf || 'ES';
+  // Modo análise de operação tem prioridade no aviso.
+  if (data.op) {
+    const nome = data.op === 'DEVOLUCAO' ? 'DEVOLUÇÃO' : 'REENTREGA';
+    const eixo = data.op === 'DEVOLUCAO' ? `mapa por <b>origem</b> (de onde a carga voltou = o cliente)` : `mapa por <b>destino</b>`;
+    el.innerHTML = `🔎 <b>Analisando ${nome}</b> — o painel inteiro (mapa, transportadoras, cards) mostra só esses CTes; ${eixo}. `
+      + `<span id="limparOp" style="color:var(--accent);cursor:pointer;text-decoration:underline;">✕ voltar ao %NF normal</span>`;
+    const lo = document.getElementById('limparOp');
+    if (lo) lo.addEventListener('click', () => { opSel = null; ufsSel = []; load(); });
+    return;
+  }
+  if (escopo === 'coleta') {
+    el.innerHTML = `📥 <b>Escopo: Coleta (entrada)</b> — frete de compra com origem fora de ${sede} (ex.: fornecedor em outra UF → ${sede}). Não faz parte do %NF sobre faturamento de venda.`;
+    return;
+  }
+  if (escopo === 'todas') {
+    el.innerHTML = `⚠️ <b>Escopo: Todas</b> — inclui ${fmtInt(c.ctes)} coleta(s) de entrada (${money(c.frete_total)} de frete). O %NF fica <b>distorcido</b> porque mistura frete de compra com o de venda; use <b>Distribuição</b> para o número da diretoria.`;
+    return;
+  }
+  // distribuicao (padrão)
+  if (c.ctes > 0) {
+    el.innerHTML = `✅ Mostrando só <b>frete de venda</b> (saídas de ${sede}). `
+      + `<b>${fmtInt(c.ctes)} coleta(s) de entrada</b> (${money(c.frete_total)} de frete sobre ${money(c.valor_nf)} de NF · %NF ${pct(c.pct_nf)}) `
+      + `estão <b>contadas à parte</b>, fora deste indicador. Veja em “Escopo → Coleta”.`;
+  } else {
+    el.innerHTML = `✅ Mostrando só <b>frete de venda</b> (saídas de ${sede}). Nenhuma coleta de entrada no período.`;
+  }
+}
+// Preenche o dropdown de transportadora preservando a seleção atual.
+function popularTransp(lista, atual) {
+  const sel = $('#transpFilter');
+  sel.innerHTML = '<option value="">Todas</option>';
+  for (const nome of (lista || [])) {
+    const o = document.createElement('option'); o.value = nome; o.textContent = nome; sel.appendChild(o);
+  }
+  sel.value = (atual && lista && lista.includes(atual)) ? atual : '';
+}
+$('#ufChip').addEventListener('click', () => { ufsSel = []; load(); });
+$('#mesFilter').addEventListener('change', load);
+$('#escopoFilter').addEventListener('change', load);
+$('#transpFilter').addEventListener('change', load);
+$('#refreshBtn').addEventListener('click', load);
+
+(async () => { await loadMeses(); await load(); })();
+</script>
+
+<script src="/static/auth.js" defer></script>
+</body>
+</html>
